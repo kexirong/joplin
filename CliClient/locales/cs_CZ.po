@@ -124,9 +124,10 @@ msgstr "Označí to-do jako hotové."
 msgid "Note is not a to-do: \"%s\""
 msgstr "Poznámka není to-do: \"%s\""
 
+#, fuzzy
 msgid ""
 "Manages E2EE configuration. Commands are `enable`, `disable`, `decrypt`, "
-"`status` and `target-status`."
+"`status`, `decrypt-file` and `target-status`."
 msgstr ""
 "Nastavuje šifrování. Příkazy jsou `enable` (zapnout), `disable` (vypnout), "
 "`decrypt` (dešifrovat), `status` (stav) a `target-status` (stav v cíli "
@@ -571,6 +572,20 @@ msgstr ""
 msgid "Exporting to \"%s\" as \"%s\" format. Please wait..."
 msgstr "Exportuji do \"%s\" jako formát \"%s\". Chvíli strpení..."
 
+msgid "Sidebar"
+msgstr ""
+
+msgid "Note list"
+msgstr ""
+
+#, fuzzy
+msgid "Note title"
+msgstr "Název zápisníku:"
+
+#, fuzzy
+msgid "Note body"
+msgstr "Zápisníky"
+
 #, javascript-format
 msgid "Importing from \"%s\" as \"%s\" format. Please wait..."
 msgstr "Importuji z \"%s\" jako formát \"%s\". Chvíli strpení..."
@@ -578,8 +593,8 @@ msgstr "Importuji z \"%s\" jako formát \"%s\". Chvíli strpení..."
 msgid "PDF File"
 msgstr "PDF soubor"
 
-msgid "File"
-msgstr "Soubor"
+msgid "Synchronisation status"
+msgstr "Stav synchronizace"
 
 msgid "New note"
 msgstr "Nová poznámka"
@@ -590,14 +605,43 @@ msgstr "Nové to-do"
 msgid "New notebook"
 msgstr "Nový zápisník"
 
+msgid "Print"
+msgstr "Tisk"
+
+msgid "General Options"
+msgstr "Obecná nastavení"
+
+msgid "Encryption options"
+msgstr "Nastavení šifrování"
+
+msgid "Web clipper options"
+msgstr ""
+
+#, javascript-format
+msgid "%s %s (%s, %s)"
+msgstr "%s %s (%s, %s)"
+
+#, fuzzy
+msgid "&File"
+msgstr "Soubor"
+
+msgid "About Joplin"
+msgstr "O aplikaci Joplin"
+
+msgid "Preferences..."
+msgstr ""
+
+msgid "Check for updates..."
+msgstr "Zkontrolovat updaty..."
+
 msgid "Import"
 msgstr "Import"
 
 msgid "Export"
 msgstr "Export"
 
-msgid "Print"
-msgstr "Tisk"
+msgid "Synchronise"
+msgstr "Synchronizovat"
 
 #, javascript-format
 msgid "Hide %s"
@@ -606,7 +650,8 @@ msgstr "Schovat %s"
 msgid "Quit"
 msgstr "Ukončit"
 
-msgid "Edit"
+#, fuzzy
+msgid "&Edit"
 msgstr "Upravit"
 
 msgid "Copy"
@@ -628,6 +673,9 @@ msgstr ""
 msgid "Italic"
 msgstr ""
 
+msgid "Link"
+msgstr ""
+
 msgid "Insert Date Time"
 msgstr ""
 
@@ -641,7 +689,8 @@ msgstr "Hledat ve všech poznámkách"
 msgid "Search in current note"
 msgstr "Hledat ve všech poznámkách"
 
-msgid "View"
+#, fuzzy
+msgid "&View"
 msgstr "Zobrazit"
 
 msgid "Toggle sidebar"
@@ -650,22 +699,16 @@ msgstr ""
 msgid "Toggle editor layout"
 msgstr "Změňit layout editoru"
 
-msgid "Tools"
+#, fuzzy
+msgid "Focus"
+msgstr "Vybrat text poznámky"
+
+#, fuzzy
+msgid "&Tools"
 msgstr "Nástroje"
 
-msgid "Synchronisation status"
-msgstr "Stav synchronizace"
-
-msgid "Web clipper options"
-msgstr ""
-
-msgid "Encryption options"
-msgstr "Nastavení šifrování"
-
-msgid "General Options"
-msgstr "Obecná nastavení"
-
-msgid "Help"
+#, fuzzy
+msgid "&Help"
 msgstr "Nápověda"
 
 msgid "Website and documentation"
@@ -673,16 +716,6 @@ msgstr "Web a dokumentace"
 
 msgid "Make a donation"
 msgstr "Přispět"
-
-msgid "Check for updates..."
-msgstr "Zkontrolovat updaty..."
-
-msgid "About Joplin"
-msgstr "O aplikaci Joplin"
-
-#, javascript-format
-msgid "%s %s (%s, %s)"
-msgstr "%s %s (%s, %s)"
 
 #, javascript-format
 msgid "Open %s"
@@ -700,8 +733,20 @@ msgstr "Zrušit"
 msgid "Current version is up-to-date."
 msgstr "Současná verze je aktuální."
 
+#, javascript-format
+msgid "%s (pre-release)"
+msgstr ""
+
 msgid "An update is available, do you want to download it now?"
 msgstr "Je k dispozici update, chcete jej stáhnout?"
+
+#, javascript-format
+msgid "Your version: %s"
+msgstr ""
+
+#, javascript-format
+msgid "New version: %s"
+msgstr ""
 
 msgid "Yes"
 msgstr "Ano"
@@ -770,12 +815,15 @@ msgid ""
 "access Joplin."
 msgstr ""
 
-msgid "Check synchronisation configuration"
-msgstr "Zkontrolujte nastavení synchronizace"
-
 #, javascript-format
 msgid "Notes and settings are stored in: %s"
 msgstr "Poznámky a nastavení uloženo v: %s"
+
+msgid "Browse..."
+msgstr ""
+
+msgid "Check synchronisation configuration"
+msgstr "Zkontrolujte nastavení synchronizace"
 
 msgid "Apply"
 msgstr ""
@@ -866,6 +914,10 @@ msgstr "Status"
 msgid "Encryption is:"
 msgstr "Šifrování je:"
 
+#, fuzzy
+msgid "Usage"
+msgstr "Použití: %s"
+
 msgid "Back"
 msgstr "Zpět"
 
@@ -918,37 +970,6 @@ msgstr "Některé položky nelze rozšifrovat."
 msgid "Set the password"
 msgstr "Nastavit heslo"
 
-msgid "Add or remove tags"
-msgstr "Přidat či odebrat tagy"
-
-msgid "Duplicate"
-msgstr ""
-
-#, fuzzy, javascript-format
-msgid "%s - Copy"
-msgstr "Kopírovat"
-
-msgid "Switch between note and to-do type"
-msgstr "Přepnout mezi poznámkou a to-do"
-
-#, fuzzy
-msgid "Switch to note type"
-msgstr "Přepnout mezi poznámkou a to-do"
-
-#, fuzzy
-msgid "Switch to to-do type"
-msgstr "Přepnout mezi poznámkou a to-do"
-
-#, fuzzy
-msgid "Copy Markdown link"
-msgstr "Markdown"
-
-msgid "Delete"
-msgstr "Smazat"
-
-msgid "Delete notes?"
-msgstr "Smazat poznámky?"
-
 msgid "No notes in here. Create one by clicking on \"New note\"."
 msgstr "Žádné poznámky. Vytvořte jednu kliknutím na \"Nová poznámka\"."
 
@@ -993,6 +1014,9 @@ msgid ""
 "This note has no content. Click on \"%s\" to toggle the editor and edit the "
 "note."
 msgstr "Tato poznámka je prázdný. Klikněte na  \"%s\" pro otevření editoru."
+
+msgid "Only one note can be printed or exported to PDF at a time."
+msgstr ""
 
 msgid "strong text"
 msgstr ""
@@ -1082,17 +1106,25 @@ msgstr "Nastavení šifrování"
 msgid "Clipper Options"
 msgstr "Obecná nastavení"
 
-msgid "Remove this tag from all the notes?"
+#, fuzzy, javascript-format
+msgid ""
+"Delete notebook \"%s\"?\n"
+"\n"
+"All notes and sub-notebooks within this notebook will also be deleted."
+msgstr "Smazat zápisník? Budou smazány i všechny poznámky v něm obsažené."
+
+#, fuzzy, javascript-format
+msgid "Remove tag \"%s\" from all notes?"
 msgstr "Odebrat tento tag ze všech poznámek?"
 
 msgid "Remove this search from the sidebar?"
 msgstr "Smazat tento hledaný výraz z panelu?"
 
+msgid "Delete"
+msgstr "Smazat"
+
 msgid "Rename"
 msgstr "Přejmenovat"
-
-msgid "Synchronise"
-msgstr "Synchronizovat"
 
 msgid "Notebooks"
 msgstr "Zápisníky"
@@ -1107,6 +1139,48 @@ msgstr "Zdroje: %d."
 
 msgid "Please select where the sync status should be exported to"
 msgstr "Prosím vyberte, kam má být stav synchronizace exportován"
+
+msgid "Add or remove tags"
+msgstr "Přidat či odebrat tagy"
+
+#, fuzzy
+msgid "Duplicate"
+msgstr "Ukončí aplikaci."
+
+#, fuzzy, javascript-format
+msgid "%s - Copy"
+msgstr "Kopírovat"
+
+msgid "Switch between note and to-do type"
+msgstr "Přepnout mezi poznámkou a to-do"
+
+#, fuzzy
+msgid "Switch to note type"
+msgstr "Přepnout mezi poznámkou a to-do"
+
+#, fuzzy
+msgid "Switch to to-do type"
+msgstr "Přepnout mezi poznámkou a to-do"
+
+#, fuzzy
+msgid "Copy Markdown link"
+msgstr "Markdown"
+
+#, fuzzy, javascript-format
+msgid "Delete note \"%s\"?"
+msgstr "Smazat poznámky?"
+
+#, fuzzy, javascript-format
+msgid "Delete these %d notes?"
+msgstr "Smazat tyto poznámky?"
+
+msgid ""
+"Type a note title to jump to it. Or type # followed by a tag name, or @ "
+"followed by a notebook name."
+msgstr ""
+
+msgid "Goto Anything..."
+msgstr ""
 
 #, javascript-format
 msgid "Usage: %s"
@@ -1226,6 +1300,14 @@ msgstr "Zašifrováno"
 msgid "Encrypted items cannot be modified"
 msgstr "Nelze editovat zašifrovanou položku"
 
+#, fuzzy
+msgid "title"
+msgstr "Bez názvu"
+
+#, fuzzy
+msgid "updated date"
+msgstr "Upraveno: %d."
+
 msgid "Conflicts"
 msgstr "Konflikty"
 
@@ -1236,14 +1318,6 @@ msgstr "Poznámku nelze přesunout do zápisníku \"%s\""
 #, javascript-format
 msgid "Notebooks cannot be named \"%s\", which is a reserved title."
 msgstr "Zápisník se nemůže jmenovat \"%s\", tento název je rezervován."
-
-#, fuzzy
-msgid "title"
-msgstr "Bez názvu"
-
-#, fuzzy
-msgid "updated date"
-msgstr "Upraveno: %d."
 
 #, fuzzy
 msgid "created date"
@@ -1259,6 +1333,13 @@ msgstr "Poznámku \"%s\" nelze zkopírovat do zápisníku"
 #, javascript-format
 msgid "Cannot move note to \"%s\" notebook"
 msgstr "Poznámku nelze přesunout do zápisníku \"%s\""
+
+#, javascript-format
+msgid ""
+"Attention: If you change this location, make sure you copy all your content "
+"to it before syncing, otherwise all files will be removed! See the FAQ for "
+"more details: %s"
+msgstr ""
 
 msgid "Language"
 msgstr "Jazyk"
@@ -1291,6 +1372,10 @@ msgstr "Řadit poznámky podle"
 msgid "Reverse sort order"
 msgstr "Řadit od konce"
 
+#, fuzzy
+msgid "Sort notebooks by"
+msgstr "Řadit poznámky podle"
+
 msgid "Save geo-location with notes"
 msgstr "Ukládat k poznámkám informace o poloze (geolokaci)"
 
@@ -1305,6 +1390,43 @@ msgstr "Vybrat text poznámky"
 
 msgid "When creating a new note:"
 msgstr "Při vytváření nové poznámky:"
+
+msgid "Enable soft breaks"
+msgstr ""
+
+#, fuzzy
+msgid "Enable math expressions"
+msgstr "Zapnout šifrování"
+
+msgid "Enable ==mark== syntax"
+msgstr ""
+
+msgid "Enable footnotes"
+msgstr ""
+
+msgid "Enable table of contents extension"
+msgstr ""
+
+msgid "Enable ~sub~ syntax"
+msgstr ""
+
+msgid "Enable ^sup^ syntax"
+msgstr ""
+
+msgid "Enable deflist syntax"
+msgstr ""
+
+msgid "Enable abbreviation syntax"
+msgstr ""
+
+msgid "Enable markdown emoji"
+msgstr ""
+
+msgid "Enable ++insert++ syntax"
+msgstr ""
+
+msgid "Enable multimarkdown table extension"
+msgstr ""
 
 msgid "Show tray icon"
 msgstr "Zobrazovat ikonu v panelu"
@@ -1341,6 +1463,13 @@ msgstr ""
 
 msgid "Automatically update the application"
 msgstr "Automaticky updatovat aplikaci"
+
+msgid "Get pre-releases when checking for updates"
+msgstr ""
+
+#, javascript-format
+msgid "See the pre-release page for more details: %s"
+msgstr ""
 
 msgid "Synchronisation interval"
 msgstr "Interval synchronizace"
@@ -1385,22 +1514,8 @@ msgstr ""
 msgid "Directory to synchronise with (absolute path)"
 msgstr "Složka k synchronizaci (absolutní cesta)"
 
-msgid ""
-"The path to synchronise with when file system synchronisation is enabled. "
-"See `sync.target`."
-msgstr ""
-"Cesta ke složce, se kterou synchronizovat, pokud je cílem synchronizace "
-"místní souborový systém. Viz `sync.target`."
-
 msgid "Nextcloud WebDAV URL"
 msgstr "Nextcloud WebDAV URL"
-
-#, javascript-format
-msgid ""
-"Attention: If you change this location, make sure you copy all your content "
-"to it before syncing, otherwise all files will be removed! See the FAQ for "
-"more details: %s"
-msgstr ""
 
 msgid "Nextcloud username"
 msgstr "Nextcloud uživatelské jméno"
@@ -1434,6 +1549,28 @@ msgstr ""
 msgid "Invalid option value: \"%s\". Possible values are: %s."
 msgstr "Neplatná hodnota: \"%s\". Přípustné hodnoty jsou: %s."
 
+#, fuzzy
+msgid "General"
+msgstr "Obecná nastavení"
+
+#, fuzzy
+msgid "Synchronisation"
+msgstr "Stav synchronizace"
+
+msgid "Appearance"
+msgstr ""
+
+#, fuzzy
+msgid "Note"
+msgstr "Zápisníky"
+
+msgid "Plugins"
+msgstr ""
+
+#, fuzzy
+msgid "Application"
+msgstr "Ukončí aplikaci."
+
 #, javascript-format
 msgid "The tag \"%s\" already exists. Please choose a different name."
 msgstr ""
@@ -1453,6 +1590,9 @@ msgstr "Soubor Evernote Exportu"
 #, fuzzy
 msgid "Json Export Directory"
 msgstr "Složka pro export"
+
+msgid "File"
+msgstr "Soubor"
 
 msgid "Directory"
 msgstr "Adresář"
@@ -1634,9 +1774,20 @@ msgstr ""
 msgid "Joplin website"
 msgstr "Web Joplinu"
 
+#, javascript-format
+msgid "Database v%s"
+msgstr ""
+
+#, fuzzy, javascript-format
+msgid "FTS enabled: %d"
+msgstr "K smazání: %d"
+
 #, fuzzy
 msgid "Login with Dropbox"
 msgstr "Přihlásit se pomocí OneDrive"
+
+msgid "Enter code here"
+msgstr ""
 
 #, javascript-format
 msgid "Master Key %s"
@@ -1720,6 +1871,9 @@ msgstr "Zobrazit na map+"
 msgid "Go to source URL"
 msgstr ""
 
+msgid "Edit"
+msgstr "Upravit"
+
 msgid "Delete notebook"
 msgstr "Smazat zápisník"
 
@@ -1741,6 +1895,21 @@ msgstr "Nemáte žádný zápisník. Vytvořte jeden kliknutím na tlačítko (+
 
 msgid "Welcome"
 msgstr "Vítejte"
+
+#, fuzzy
+#~ msgid "This note has no history"
+#~ msgstr "Poznámka byla upravena:"
+
+#~ msgid ""
+#~ "The path to synchronise with when file system synchronisation is enabled. "
+#~ "See `sync.target`."
+#~ msgstr ""
+#~ "Cesta ke složce, se kterou synchronizovat, pokud je cílem synchronizace "
+#~ "místní souborový systém. Viz `sync.target`."
+
+#, fuzzy
+#~ msgid "Joplin v%s"
+#~ msgstr "Web Joplinu"
 
 #~ msgid "State: %s."
 #~ msgstr "Stav: %s."

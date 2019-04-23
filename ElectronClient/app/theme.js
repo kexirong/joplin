@@ -1,12 +1,9 @@
 const Setting = require('lib/models/Setting.js');
 
-const zoomRatio = Setting.value('style.zoom') / 100;
-const editorFontSize = Setting.value('style.editor.fontSize');
-
 // globalStyle should be used for properties that do not change across themes
 // i.e. should not be used for colors
 const globalStyle = {
-	fontSize: Math.round(12 * zoomRatio),
+	fontSize: 12,
 	fontFamily: 'sans-serif',
 	margin: 15, // No text and no interactive component should be within this margin
 	itemMarginTop: 10,
@@ -15,8 +12,8 @@ const globalStyle = {
 	disabledOpacity: 0.3,
 	buttonMinWidth: 50,
 	buttonMinHeight: 30,
-	editorFontSize: editorFontSize,
-	textAreaLineHeight: Math.round(17 * editorFontSize / 12),
+	editorFontSize: 12,
+	textAreaLineHeight: 17,
 
 	headerHeight: 35,
 	headerButtonHPadding: 6,
@@ -24,10 +21,6 @@ const globalStyle = {
 	toolbarHeight: 35,
 	tagItemPadding: 3,
 };
-
-// For WebView - must correspond to the properties above
-globalStyle.htmlFontSize = globalStyle.fontSize + 'px';
-globalStyle.htmlLineHeight = Math.round(20 * zoomRatio) + 'px';
 
 globalStyle.marginRight = globalStyle.margin;
 globalStyle.marginLeft = globalStyle.margin;
@@ -43,43 +36,16 @@ globalStyle.lineInput = {
 	fontFamily: globalStyle.fontFamily,
 };
 
-globalStyle.textStyle = {
+globalStyle.headerStyle = {
 	fontFamily: globalStyle.fontFamily,
-	fontSize: globalStyle.fontSize,
-	lineHeight: '1.6em',
 };
-
-globalStyle.textStyle2 = Object.assign({}, globalStyle.textStyle, {});
-
-globalStyle.urlStyle = Object.assign({}, globalStyle.textStyle, { textDecoration: 'underline' });
-
-globalStyle.h1Style = Object.assign({}, globalStyle.textStyle);
-globalStyle.h1Style.fontSize *= 1.5;
-globalStyle.h1Style.fontWeight = 'bold';
-
-globalStyle.h2Style = Object.assign({}, globalStyle.textStyle);
-globalStyle.h2Style.fontSize *= 1.3;
-globalStyle.h2Style.fontWeight = 'bold';
-
-globalStyle.toolbarStyle = {
-	height: globalStyle.toolbarHeight,
-	minWidth: globalStyle.toolbarHeight,
-	display: 'flex',
-	alignItems: 'center',
-	paddingLeft: globalStyle.headerButtonHPadding,
-	paddingRight: globalStyle.headerButtonHPadding,
-	textDecoration: 'none',
-	fontFamily: globalStyle.fontFamily,
-	fontSize: globalStyle.fontSize,
-	boxSizing: 'border-box',
-	cursor: 'default',
-	justifyContent: 'center',
-};
-
-globalStyle.headerStyle = {};
 
 globalStyle.inputStyle = {
 	border: '1px solid',
+	height: 24,
+	paddingLeft: 5,
+	paddingRight: 5,
+	boxSizing: 'border-box',
 };
 
 globalStyle.containerStyle = {
@@ -90,6 +56,11 @@ globalStyle.containerStyle = {
 globalStyle.buttonStyle = {
 	marginRight: 10,
 	border: '1px solid',
+	minHeight: 30,
+	minWidth: 80,
+	maxWidth: 160,
+	paddingLeft: 12,
+	paddingRight: 12,
 };
 
 const lightStyle = {
@@ -100,6 +71,7 @@ const lightStyle = {
 	colorError: "red",
 	colorWarn: "#9A5B00",
 	colorFaded: "#777777", // For less important text
+	colorBright: "#000000", // For important text
 	dividerColor: "#dddddd",
 	selectedColor: '#e5e5e5',
 	urlColor: '#155BDA',
@@ -114,15 +86,14 @@ const lightStyle = {
 
 	warningBackgroundColor: "#FFD08D",
 
-	codeColor: "#EFF0F1",
-	codeBorderColor: '#CBCBCB',
-
-	htmlColor:'black', // Note: CSS in WebView component only supports named colors or rgb() notation
+	htmlColor:'#222222',
 	htmlBackgroundColor: 'white',
-	htmlDividerColor: 'rgb(150,150,150)',
-	htmlLinkColor: 'blue',
-	htmlCodeColor: 'rgb(239, 240, 241)',
-	htmlCodeBorderColor: 'rgb(203, 203, 203)',
+	htmlDividerColor: 'rgb(230,230,230)',
+	htmlLinkColor: 'rgb(80,130,190)',
+	htmlTableBackgroundColor: 'rgb(247, 247, 247)',
+	htmlCodeBackgroundColor: 'rgb(243, 243, 243)',
+	htmlCodeBorderColor: 'rgb(220, 220, 220)',
+	htmlCodeColor: 'rgb(0,0,0)',
 
 	editorTheme: "chrome",
 	codeThemeCss: "atom-one-light.css",
@@ -137,13 +108,14 @@ const darkStyle = {
 	colorError: "red",
 	colorWarn: "#9A5B00",
 	colorFaded: "#777777", // For less important text
+	colorBright: "#ffffff", // For important text
 	dividerColor: '#555555',
 	selectedColor: '#333333',
 	urlColor: '#4E87EE',
 
-	backgroundColor2: "#162B3D",
+	backgroundColor2: "#181A1D",
 	color2: "#ffffff",
-	selectedColor2: "#0269C2",
+	selectedColor2: "#333333",
 	colorError2: "#ff6c6c",
 
 	raisedBackgroundColor: "#474747",
@@ -151,14 +123,13 @@ const darkStyle = {
 
 	warningBackgroundColor: "#CC6600",
 
-	codeColor: "#2F3031",
-	codeBorderColor: '#464646',
-
-	htmlColor: 'rgb(220,220,220)', // Note: CSS in WebView component only supports named colors or rgb() notation
+	htmlColor: 'rgb(220,220,220)',
 	htmlBackgroundColor: 'rgb(29,32,36)',
-	htmlDividerColor: 'rgb(150,150,150)',
+	htmlDividerColor: '#3D444E',
+	htmlCodeColor: '#ffffff',
 	htmlLinkColor: 'rgb(166,166,255)',
-	htmlCodeColor: 'rgb(47, 48, 49)',
+	htmlTableBackgroundColor: 'rgb(40, 41, 42)',
+	htmlCodeBackgroundColor: 'rgb(47, 48, 49)',
 	htmlCodeBorderColor: 'rgb(70, 70, 70)',
 
 	editorTheme: 'twilight',
@@ -180,6 +151,81 @@ function addExtraStyles(style) {
 		color: style.raisedColor,
 	};
 
+	style.toolbarStyle = {
+		height: style.toolbarHeight,
+		// minWidth: style.toolbarHeight,
+		display: 'flex',
+		alignItems: 'center',
+		paddingLeft: style.headerButtonHPadding,
+		paddingRight: style.headerButtonHPadding,
+		textDecoration: 'none',
+		fontFamily: style.fontFamily,
+		fontSize: style.fontSize,
+		boxSizing: 'border-box',
+		cursor: 'default',
+		justifyContent: 'center',
+		color: style.color,
+		whiteSpace: 'nowrap',
+	};
+
+	style.textStyle = {
+		fontFamily: globalStyle.fontFamily,
+		fontSize: style.fontSize,
+		lineHeight: '1.6em',
+		color: style.color
+	};
+
+	style.textStyle2 = Object.assign({}, style.textStyle,
+		{ color: style.color2, }
+	);
+
+	style.urlStyle = Object.assign({}, style.textStyle,
+		{
+			textDecoration: 'underline',
+			color: style.urlColor
+		}
+	);
+
+	style.h1Style = Object.assign({},
+		style.textStyle,
+		{
+			color: style.color,
+			fontSize: style.textStyle.fontSize * 1.5,
+			fontWeight: 'bold'
+		}
+	);
+
+	style.h2Style = Object.assign({},
+		style.textStyle,
+		{
+			color: style.color,
+			fontSize: style.textStyle.fontSize * 1.3,
+			fontWeight: 'bold'
+		}
+	);
+
+	style.dialogModalLayer = {
+		zIndex: 9999,
+		display: 'flex',
+		position: 'absolute',
+		top: 0,
+		left: 0,
+		width: '100%',
+		height: '100%',
+		backgroundColor: 'rgba(0,0,0,0.6)',
+		alignItems: 'flex-start',
+		justifyContent: 'center',
+	};
+
+	style.dialogBox = {
+		backgroundColor: style.backgroundColor,
+		padding: 16,
+		boxShadow: '6px 6px 20px rgba(0,0,0,0.5)',
+		marginTop: 20,
+	}
+
+	style.dialogTitle = Object.assign({}, style.h1Style, { marginBottom: '1.2em' });
+
 	return style;
 }
 
@@ -187,25 +233,39 @@ let themeCache_ = {};
 
 function themeStyle(theme) {
 	if (!theme) throw new Error('Theme must be specified');
-	if (themeCache_[theme]) return themeCache_[theme];
+
+	var zoomRatio = Setting.value('style.zoom') / 100;
+	var editorFontSize = Setting.value('style.editor.fontSize');
+
+	const cacheKey = [theme, zoomRatio, editorFontSize].join('-');
+	if (themeCache_[cacheKey]) return themeCache_[cacheKey];
+
+	let fontSizes = {
+		fontSize: Math.round(12 * zoomRatio),
+		editorFontSize: editorFontSize,
+		textAreaLineHeight: Math.round(17 * editorFontSize / 12),
+
+		// For WebView - must correspond to the properties above
+		htmlFontSize: Math.round(15 * zoomRatio) + 'px',
+		htmlLineHeight: '1.6em', //Math.round(20 * zoomRatio) + 'px'
+
+		htmlCodeFontSize: '.9em',
+	}
 
 	let output = {};
+	output.zoomRatio = zoomRatio;
+	output.editorFontSize = editorFontSize;
 	if (theme == Setting.THEME_LIGHT) {
-		output = Object.assign({}, globalStyle, lightStyle);
+		output = Object.assign({}, globalStyle, fontSizes, lightStyle);
 	}
 	else if (theme == Setting.THEME_DARK) {
-		output = Object.assign({}, globalStyle, darkStyle);
+		output = Object.assign({}, globalStyle, fontSizes, darkStyle);
 	}
 
-	// TODO: All the theme specific things should go in addExtraStyles
+	// Note: All the theme specific things should go in addExtraStyles
 	// so that their definition is not split between here and the
 	// beginning of the file. At least new styles should go in
 	// addExtraStyles.
-
-	output.textStyle = Object.assign({},
-		output.textStyle,
-		{ color: output.color }
-	);
 
 	output.icon = Object.assign({},
 		output.icon,
@@ -218,31 +278,6 @@ function themeStyle(theme) {
 			color: output.color,
 			backgroundColor: output.backgroundColor,
 		}
-	);
-
-	output.textStyle2 = Object.assign({},
-		output.textStyle2,
-		{ color: output.color2, }
-	);
-
-	output.urlStyle = Object.assign({},
-		output.urlStyle,
-		{ color: output.urlColor }
-	);
-
-	output.h1Style = Object.assign({},
-		output.h1Style,
-		{ color: output.color }
-	);
-
-	output.h2Style = Object.assign({},
-		output.h2Style,
-		{ color: output.color }
-	);
-
-	output.toolbarStyle = Object.assign({},
-		output.toolbarStyle,
-		{ color: output.color }
 	);
 
 	output.headerStyle = Object.assign({},
@@ -281,8 +316,8 @@ function themeStyle(theme) {
 
 	output = addExtraStyles(output);
 
-	themeCache_[theme] = output;
-	return themeCache_[theme];
+	themeCache_[cacheKey] = output;
+	return themeCache_[cacheKey];
 }
 
 module.exports = { themeStyle };

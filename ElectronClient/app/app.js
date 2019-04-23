@@ -23,12 +23,16 @@ const DecryptionWorker = require('lib/services/DecryptionWorker');
 const InteropService = require('lib/services/InteropService');
 const InteropServiceHelper = require('./InteropServiceHelper.js');
 const ResourceService = require('lib/services/ResourceService');
-const SearchEngine = require('lib/services/SearchEngine');
 const ClipperServer = require('lib/ClipperServer');
 const ExternalEditWatcher = require('lib/services/ExternalEditWatcher');
 const { bridge } = require('electron').remote.require('./bridge');
 const Menu = bridge().Menu;
 const MenuItem = bridge().MenuItem;
+const PluginManager = require('lib/services/PluginManager');
+
+const pluginClasses = [
+	require('./plugins/GotoAnything.min'),
+];
 
 const appDefaultState = Object.assign({}, defaultState, {
 	route: {
@@ -43,6 +47,7 @@ const appDefaultState = Object.assign({}, defaultState, {
 	sidebarVisibility: true,
 	windowContentSize: bridge().windowContentSize(),
 	watchedNoteFiles: [],
+	lastEditorScrollPercents: {},
 });
 
 class Application extends BaseApplication {
@@ -172,6 +177,14 @@ class Application extends BaseApplication {
 					}
 					break;
 
+				case 'EDITOR_SCROLL_PERCENT_SET':
+
+					newState = Object.assign({}, state);
+					const newPercents = Object.assign({}, newState.lastEditorScrollPercents);
+					newPercents[action.noteId] = action.percent;
+					newState.lastEditorScrollPercents = newPercents;
+					break;
+
 			}
 		} catch (error) {
 			error.message = 'In reducer: ' + error.message + ' Action: ' + JSON.stringify(action);
@@ -196,10 +209,6 @@ class Application extends BaseApplication {
 
 		if (action.type == 'SETTING_UPDATE_ONE' && action.key == 'style.editor.fontFamily' || action.type == 'SETTING_UPDATE_ALL') {
 			this.updateEditorFont();
-		}
-
-		if (["NOTE_UPDATE_ONE", "NOTE_DELETE", "FOLDER_UPDATE_ONE", "FOLDER_DELETE"].indexOf(action.type) >= 0) {
-			if (!await reg.syncTarget().syncStarted()) reg.scheduleSync(30 * 1000, { syncSteps: ["update_remote", "delete_remote"] });
 		}
 
 		if (['EVENT_NOTE_ALARM_FIELD_CHANGE', 'NOTE_DELETE'].indexOf(action.type) >= 0) {
@@ -230,27 +239,82 @@ class Application extends BaseApplication {
 		this.updateMenu(screen);
 	}
 
+	focusElement_(target) {
+		this.dispatch({
+			type: 'WINDOW_COMMAND',
+			name: 'focusElement',
+			target: target,
+		});
+	}
+
 	updateMenu(screen) {
 		if (this.lastMenuScreen_ === screen) return;
 
-		const sortNoteItems = [];
-		const sortNoteOptions = Setting.enumOptions('notes.sortOrder.field');
-		for (let field in sortNoteOptions) {
-			if (!sortNoteOptions.hasOwnProperty(field)) continue;
-			sortNoteItems.push({
-				label: sortNoteOptions[field],
-				screens: ['Main'],
+		const sortNoteFolderItems = (type) => {
+			const sortItems = [];
+			const sortOptions = Setting.enumOptions(type + '.sortOrder.field');
+			for (let field in sortOptions) {
+				if (!sortOptions.hasOwnProperty(field)) continue;
+				sortItems.push({
+					label: sortOptions[field],
+					screens: ['Main'],
+					type: 'checkbox',
+					checked: Setting.value(type + '.sortOrder.field') === field,
+					click: () => {
+						Setting.setValue(type + '.sortOrder.field', field);
+						this.refreshMenu();
+					}
+				});
+			}
+			
+			sortItems.push({ type: 'separator' });
+
+			sortItems.push({
+				label: Setting.settingMetadata(type + '.sortOrder.reverse').label(),
 				type: 'checkbox',
-				checked: Setting.value('notes.sortOrder.field') === field,
+				checked: Setting.value(type + '.sortOrder.reverse'),
+				screens: ['Main'],
 				click: () => {
-					Setting.setValue('notes.sortOrder.field', field);
-					this.refreshMenu();
-				}
+					Setting.setValue(type + '.sortOrder.reverse', !Setting.value(type + '.sortOrder.reverse'));
+				},
 			});
+
+			return sortItems;
 		}
+
+		const sortNoteItems = sortNoteFolderItems('notes');
+		const sortFolderItems = sortNoteFolderItems('folders');
+
+		const focusItems = [];
+
+		focusItems.push({
+			label: _('Sidebar'),
+			click: () => { this.focusElement_('sideBar') },
+			accelerator: 'CommandOrControl+Shift+S',
+		});
+
+		focusItems.push({
+			label: _('Note list'),
+			click: () => { this.focusElement_('noteList') },
+			accelerator: 'CommandOrControl+Shift+L',
+		});
+
+		focusItems.push({
+			label: _('Note title'),
+			click: () => { this.focusElement_('noteTitle') },
+			accelerator: 'CommandOrControl+Shift+N',
+		});
+
+		focusItems.push({
+			label: _('Note body'),
+			click: () => { this.focusElement_('noteBody') },
+			accelerator: 'CommandOrControl+Shift+B',
+		});
 
 		const importItems = [];
 		const exportItems = [];
+		const preferencesItems = [];
+		const toolsItemsFirst = [];
 		const ioService = new InteropService();
 		const ioModules = ioService.modules();
 		for (let i = 0; i < ioModules.length; i++) {
@@ -298,6 +362,9 @@ class Application extends BaseApplication {
 							importOptions.path = path;
 							importOptions.format = module.format;
 							importOptions.destinationFolderId = !module.isNoteArchive && moduleSource === 'file' ? selectedFolderId : null;
+							importOptions.onError = (error) => {
+								console.warn(error);
+							}
 
 							const service = new InteropService();
 							try {
@@ -328,39 +395,199 @@ class Application extends BaseApplication {
 			}
 		});
 
-		const template = [
-			{
-				label: _('File'),
-				submenu: [{
-					label: _('New note'),
-					accelerator: 'CommandOrControl+N',
-					screens: ['Main'],
-					click: () => {
-						this.dispatch({
-							type: 'WINDOW_COMMAND',
-							name: 'newNote',
-						});
-					}
-				}, {
-					label: _('New to-do'),
-					accelerator: 'CommandOrControl+T',
-					screens: ['Main'],
-					click: () => {
-						this.dispatch({
-							type: 'WINDOW_COMMAND',
-							name: 'newTodo',
-						});
-					}
-				}, {
-					label: _('New notebook'),
-					screens: ['Main'],
-					click: () => {
-						this.dispatch({
-							type: 'WINDOW_COMMAND',
-							name: 'newNotebook',
-						});
-					}
-				}, {
+		/* We need a dummy entry, otherwise the ternary operator to show a
+		 * menu item only on a specific OS does not work. */
+		const noItem = {
+			type: 'separator',
+			visible: false
+		}
+
+		const syncStatusItem = {
+			label: _('Synchronisation status'),
+			click: () => {
+				this.dispatch({
+					type: 'NAV_GO',
+					routeName: 'Status',
+				});
+			}
+		}
+
+		const newNoteItem = {
+			label: _('New note'),
+			accelerator: 'CommandOrControl+N',
+			screens: ['Main'],
+			click: () => {
+				this.dispatch({
+					type: 'WINDOW_COMMAND',
+					name: 'newNote',
+				});
+			}
+		}
+
+		const newTodoItem = {
+			label: _('New to-do'),
+			accelerator: 'CommandOrControl+T',
+			screens: ['Main'],
+			click: () => {
+				this.dispatch({
+					type: 'WINDOW_COMMAND',
+					name: 'newTodo',
+				});
+			}
+		}
+
+		const newNotebookItem = {
+			label: _('New notebook'),
+			screens: ['Main'],
+			click: () => {
+				this.dispatch({
+					type: 'WINDOW_COMMAND',
+					name: 'newNotebook',
+				});
+			}
+		}
+
+		const printItem = {
+			label: _('Print'),
+			accelerator: 'CommandOrControl+P',
+			screens: ['Main'],
+			click: () => {
+				this.dispatch({
+					type: 'WINDOW_COMMAND',
+					name: 'print',
+				});
+			}
+		}
+
+		preferencesItems.push({
+			label: _('General Options'),
+			accelerator: 'CommandOrControl+,',
+			click: () => {
+				this.dispatch({
+					type: 'NAV_GO',
+					routeName: 'Config',
+				});
+			}
+		}, {
+			label: _('Encryption options'),
+			click: () => {
+				this.dispatch({
+					type: 'NAV_GO',
+					routeName: 'EncryptionConfig',
+				});
+			}
+		}, {
+			label: _('Web clipper options'),
+			click: () => {
+				this.dispatch({
+					type: 'NAV_GO',
+					routeName: 'ClipperConfig',
+				});
+			}
+		});
+
+		toolsItemsFirst.push(syncStatusItem, {
+			type: 'separator',
+			screens: ['Main'],
+		});
+
+		const toolsItems = toolsItemsFirst.concat(preferencesItems);
+
+		function _checkForUpdates(ctx) {
+			bridge().checkForUpdates(false, bridge().window(), ctx.checkForUpdateLoggerPath(), { includePreReleases: Setting.value('autoUpdate.includePreReleases') });
+		}
+
+		function _showAbout() {
+			const p = packageInfo;
+			let message = [
+				p.description,
+				'',
+				'Copyright © 2016-2019 Laurent Cozic',
+				_('%s %s (%s, %s)', p.name, p.version, Setting.value('env'), process.platform),
+			];
+			bridge().showInfoMessageBox(message.join('\n'), {
+				icon: bridge().electronApp().buildDir() + '/icons/32x32.png',
+			});
+		}
+
+		const rootMenuFile = {
+			/* Using a dummy entry for macOS here, because first menu
+			 * becomes 'Joplin' and we need a nenu called 'File' later. */
+			label: shim.isMac() ? '&JoplinMainMenu' : _('&File'),
+			/* `&` before one of the char in the label name mean, that
+			 * <Alt + F> will open this menu. It's needed becase electron
+			 * opens the first menu on Alt press if no hotkey assigned.
+			 * Issue: https://github.com/laurent22/joplin/issues/934 */
+			submenu: [{
+				label: _('About Joplin'),
+				visible: shim.isMac() ? true : false,
+				click: () => _showAbout()
+			}, {
+				type: 'separator',
+				visible: shim.isMac() ? true : false
+			}, {
+				label: _('Preferences...'),
+				visible: shim.isMac() ? true : false,
+				submenu: preferencesItems
+			}, {
+				label: _('Check for updates...'),
+				visible: shim.isMac() ? true : false,
+				click: () => _checkForUpdates(this)
+			}, {
+				type: 'separator',
+				visible: shim.isMac() ? true : false
+			},
+			shim.isMac() ? noItem : newNoteItem,
+			shim.isMac() ? noItem : newTodoItem,
+			shim.isMac() ? noItem : newNotebookItem, {
+				type: 'separator',
+				visible: shim.isMac() ? false : true
+			}, {
+				label: _('Import'),
+				visible: shim.isMac() ? false : true,
+				submenu: importItems,
+			}, {
+				label: _('Export'),
+				visible: shim.isMac() ? false : true,
+				submenu: exportItems,
+			}, {
+				type: 'separator',
+			}, {
+				label: _('Synchronise'),
+				accelerator: 'CommandOrControl+S',
+				screens: ['Main'],
+				click: async () => {
+					this.dispatch({
+						type: 'WINDOW_COMMAND',
+						name: 'synchronize',
+					});
+				}
+			}, shim.isMac() ? syncStatusItem : noItem, {
+				type: 'separator',
+			}, shim.isMac() ? noItem : printItem, {
+				type: 'separator',
+				platforms: ['darwin'],
+			}, {
+				label: _('Hide %s', 'Joplin'),
+				platforms: ['darwin'],
+				accelerator: 'CommandOrControl+H',
+				click: () => { bridge().electronApp().hide() }
+			}, {
+				type: 'separator',
+			}, {
+				label: _('Quit'),
+				accelerator: 'CommandOrControl+Q',
+				click: () => { bridge().electronApp().quit() }
+			}]
+		};
+
+		const rootMenuFileMacOs = {
+			label: _('&File'),
+			visible: shim.isMac() ? true : false,
+			submenu: [
+				newNoteItem,
+				newTodoItem,
+				newNotebookItem, {
 					type: 'separator',
 				}, {
 					label: _('Import'),
@@ -370,33 +597,14 @@ class Application extends BaseApplication {
 					submenu: exportItems,
 				}, {
 					type: 'separator',
-				}, {
-					label: _('Print'),
-					accelerator: 'CommandOrControl+P',
-					screens: ['Main'],
-					click: () => {
-						this.dispatch({
-							type: 'WINDOW_COMMAND',
-							name: 'print',
-						});
-					}
-				}, {
-					type: 'separator',
-					platforms: ['darwin'],
-				}, {
-					label: _('Hide %s', 'Joplin'),
-					platforms: ['darwin'],
-					accelerator: 'CommandOrControl+H',
-					click: () => { bridge().electronApp().hide() }
-				}, {
-					type: 'separator',
-				}, {
-					label: _('Quit'),
-					accelerator: 'CommandOrControl+Q',
-					click: () => { bridge().electronApp().quit() }
-				}]
-			}, {
-				label: _('Edit'),
+				},
+				printItem
+			]
+		};
+
+		const rootMenus = {
+			edit: {
+				label: _('&Edit'),
 				submenu: [{
 					label: _('Copy'),
 					role: 'copy',
@@ -437,9 +645,21 @@ class Application extends BaseApplication {
 						});
 					},
 				}, {
+					label: _('Link'),
+					screens: ['Main'],
+					accelerator: 'CommandOrControl+K',
+					click: () => {
+						this.dispatch({
+							type: 'WINDOW_COMMAND',
+							name: 'textLink',
+						});
+					},
+				}, {
+					type: 'separator',
+					screens: ['Main'],
+				}, {
 					label: _('Insert Date Time'),
 					screens: ['Main'],
-					visible: false,
 					accelerator: 'CommandOrControl+Shift+T',
 					click: () => {
 						this.dispatch({
@@ -466,7 +686,7 @@ class Application extends BaseApplication {
 				}, {
 					label: _('Search in all the notes'),
 					screens: ['Main'],
-					accelerator: 'F6',
+					accelerator: shim.isMac() ? 'Shift+Command+F' : 'F6',
 					click: () => {
 						this.dispatch({
 							type: 'WINDOW_COMMAND',
@@ -484,12 +704,13 @@ class Application extends BaseApplication {
 						});
 					},
 				}],
-			}, {
-				label: _('View'),
+			},
+			view: {
+				label: _('&View'),
 				submenu: [{
 					label: _('Toggle sidebar'),
 					screens: ['Main'],
-					accelerator: 'F10',
+					accelerator: shim.isMac() ? 'Option+Command+S' : 'F10',
 					click: () => {
 						this.dispatch({
 							type: 'WINDOW_COMMAND',
@@ -514,13 +735,9 @@ class Application extends BaseApplication {
 					screens: ['Main'],
 					submenu: sortNoteItems,
 				}, {
-					label: Setting.settingMetadata('notes.sortOrder.reverse').label(),
-					type: 'checkbox',
-					checked: Setting.value('notes.sortOrder.reverse'),
+					label: Setting.settingMetadata('folders.sortOrder.field').label(),
 					screens: ['Main'],
-					click: () => {
-						Setting.setValue('notes.sortOrder.reverse', !Setting.value('notes.sortOrder.reverse'));
-					},
+					submenu: sortFolderItems,
 				}, {
 					label: Setting.settingMetadata('uncompletedTodosOnTop').label(),
 					type: 'checkbox',
@@ -537,80 +754,66 @@ class Application extends BaseApplication {
 					click: () => {
 						Setting.setValue('showCompletedTodos', !Setting.value('showCompletedTodos'));
 					},
-				}],
-			}, {
-				label: _('Tools'),
-				submenu: [{
-					label: _('Synchronisation status'),
-					click: () => {
-						this.dispatch({
-							type: 'NAV_GO',
-							routeName: 'Status',
-						});
-					}
 				}, {
 					type: 'separator',
 					screens: ['Main'],
-				},{
-					label: _('Web clipper options'),
-					click: () => {
-						this.dispatch({
-							type: 'NAV_GO',
-							routeName: 'ClipperConfig',
-						});
-					}
-				},{
-					label: _('Encryption options'),
-					click: () => {
-						this.dispatch({
-							type: 'NAV_GO',
-							routeName: 'EncryptionConfig',
-						});
-					}
-				},{
-					label: _('General Options'),
-					accelerator: 'CommandOrControl+,',
-					click: () => {
-						this.dispatch({
-							type: 'NAV_GO',
-							routeName: 'Config',
-						});
-					}
+				}, {
+					label: _('Focus'),
+					screens: ['Main'],
+					submenu: focusItems,
 				}],
-			}, {
-				label: _('Help'),
+			},
+			tools: {
+				label: _('&Tools'),
+				submenu: shim.isMac() ? [] : toolsItems,
+			},
+			help: {
+				label: _('&Help'),
 				submenu: [{
 					label: _('Website and documentation'),
 					accelerator: 'F1',
-					click () { bridge().openExternal('https://joplin.cozic.net') }
+					click () { bridge().openExternal('https://joplinapp.org') }
 				}, {
 					label: _('Make a donation'),
-					click () { bridge().openExternal('https://joplin.cozic.net/donate') }
+					click () { bridge().openExternal('https://joplinapp.org/donate/') }
 				}, {
 					label: _('Check for updates...'),
-					click: () => {
-						bridge().checkForUpdates(false, bridge().window(), this.checkForUpdateLoggerPath());
-					}
+					visible: shim.isMac() ? false : true,
+					click: () => _checkForUpdates(this)
 				}, {
 					type: 'separator',
+					visible: shim.isMac() ? false : true,
 					screens: ['Main'],
 				}, {
 					label: _('About Joplin'),
-					click: () => {
-						const p = packageInfo;
-						let message = [
-							p.description,
-							'',
-							'Copyright © 2016-2018 Laurent Cozic',
-							_('%s %s (%s, %s)', p.name, p.version, Setting.value('env'), process.platform),
-						];
-						bridge().showInfoMessageBox(message.join('\n'), {
-							icon: bridge().electronApp().buildDir() + '/icons/32x32.png',
-						});
-					}
+					visible: shim.isMac() ? false : true,
+					click: () => _showAbout()
 				}]
-			},
+			},	
+		};
+
+		if (shim.isMac()) {
+			rootMenus.macOsApp = rootMenuFile;
+			rootMenus.file = rootMenuFileMacOs;
+		} else {
+			rootMenus.file = rootMenuFile;
+		}
+
+		const pluginMenuItems = PluginManager.instance().menuItems();
+		for (const item of pluginMenuItems) {
+			let itemParent = rootMenus[item.parent] ? rootMenus[item.parent] : 'tools';
+			itemParent.submenu.push(item);
+		}
+
+		const template = [
+			rootMenus.file,
+			rootMenus.edit,
+			rootMenus.view,
+			rootMenus.tools,
+			rootMenus.help,
 		];
+
+		if (shim.isMac()) template.splice(0, 0, rootMenus.macOsApp);
 
 		function isEmptyMenu(template) {
 			for (let i = 0; i < template.length; i++) {
@@ -725,6 +928,10 @@ class Application extends BaseApplication {
 			bridge().window().webContents.openDevTools();
 		}
 
+		PluginManager.instance().dispatch_ = this.dispatch.bind(this);
+		PluginManager.instance().setLogger(reg.logger());
+		PluginManager.instance().register(pluginClasses);
+
 		this.updateMenu('Main');
 
 		this.initRedux();
@@ -772,7 +979,7 @@ class Application extends BaseApplication {
 		if (shim.isWindows() || shim.isMac()) {
 			const runAutoUpdateCheck = () => {
 				if (Setting.value('autoUpdateEnabled')) {
-					bridge().checkForUpdates(true, bridge().window(), this.checkForUpdateLoggerPath());
+					bridge().checkForUpdates(true, bridge().window(), this.checkForUpdateLoggerPath(), { includePreReleases: Setting.value('autoUpdate.includePreReleases') });
 				}
 			}
 
@@ -793,9 +1000,6 @@ class Application extends BaseApplication {
 		}
 
 		ResourceService.runInBackground();
-
-		SearchEngine.instance().setDb(reg.db());
-		SearchEngine.instance().setLogger(reg.logger());
 
 		if (Setting.value('env') === 'dev') {
 			AlarmService.updateAllNotifications();

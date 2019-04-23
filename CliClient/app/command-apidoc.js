@@ -113,6 +113,11 @@ class Command extends BaseCommand {
 		lines.push('\tcurl http://localhost:41184/tags?fields=id');
 		lines.push('');
 
+		lines.push('# Error handling');
+		lines.push('');
+		lines.push('In case of an error, an HTTP status code >= 400 will be returned along with a JSON object that provides more info about the error. The JSON object is in the format `{ "error": "description of error" }`.');
+		lines.push('');
+
 		lines.push('# About the property types');
 		lines.push('');
 		lines.push('* Text is UTF-8.');
@@ -123,6 +128,11 @@ class Command extends BaseCommand {
 		lines.push('# Testing if the service is available');
 		lines.push('');
 		lines.push('Call **GET /ping** to check if the service is available. It should return "JoplinClipperServer" if it works.');
+		lines.push('');
+
+		lines.push('# Searching');
+		lines.push('');
+		lines.push('Call **GET /search?query=YOUR_QUERY** to search for notes. This end-point supports the `field` parameter which is recommended to use so that you only get the data that you need. The query syntax is as described in the main documentation: https://joplinapp.org/#searching');
 		lines.push('');
 
 		for (let i = 0; i < models.length; i++) {
@@ -154,11 +164,11 @@ class Command extends BaseCommand {
 					type: Database.enumId('fieldType', 'text'),
 					description: 'If an image is provided, you can also specify an optional rectangle that will be used to crop the image. In format `{ x: x, y: y, width: width, height: height }`',
 				});
-				tableFields.push({
-					name: 'tags',
-					type: Database.enumId('fieldType', 'text'),
-					description: 'Comma-separated list of tags. eg. `tag1,tag2`.',
-				});
+				// tableFields.push({
+				// 	name: 'tags',
+				// 	type: Database.enumId('fieldType', 'text'),
+				// 	description: 'Comma-separated list of tags. eg. `tag1,tag2`.',
+				// });
 			}
 
 			lines.push('# ' + toTitleCase(tableName));

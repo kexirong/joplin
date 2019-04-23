@@ -2,9 +2,15 @@ const { reg } = require('lib/registry.js');
 const Folder = require('lib/models/Folder.js');
 const BaseModel = require('lib/BaseModel.js');
 const Note = require('lib/models/Note.js');
+const Resource = require('lib/models/Resource.js');
 const Setting = require('lib/models/Setting.js');
+const Mutex = require('async-mutex').Mutex;
 
 const shared = {};
+
+// If saveNoteButton_press is called multiple times in short intervals, it might result in
+// the same new note being created twice, so we need to a mutex to access this function.
+const saveNoteMutex_ = new Mutex();
 
 shared.noteExists = async function(noteId) {
 	const existingNote = await Note.load(noteId);
@@ -12,6 +18,8 @@ shared.noteExists = async function(noteId) {
 }
 
 shared.saveNoteButton_press = async function(comp, folderId = null) {
+	const releaseMutex = await saveNoteMutex_.acquire();
+
 	let note = Object.assign({}, comp.state.note);
 
 	// Note has been deleted while user was modifying it. In that case, we
@@ -24,7 +32,7 @@ shared.saveNoteButton_press = async function(comp, folderId = null) {
 		const activeFolderId = Setting.value('activeFolderId');
 		let folder = await Folder.load(activeFolderId);
 		if (!folder) folder = await Folder.defaultFolder();
-		if (!folder) return;
+		if (!folder) return releaseMutex();
 		note.parent_id = folder.id;
 	}
 
@@ -46,7 +54,7 @@ shared.saveNoteButton_press = async function(comp, folderId = null) {
 	const stateNote = comp.state.note;
 
 	// Note was reloaded while being saved.
-	if (!isNew && (!stateNote || stateNote.id !== savedNote.id)) return;
+	if (!isNew && (!stateNote || stateNote.id !== savedNote.id)) return releaseMutex();
 
 	// Re-assign any property that might have changed during saving (updated_time, etc.)
 	note = Object.assign(note, savedNote);
@@ -71,6 +79,8 @@ shared.saveNoteButton_press = async function(comp, folderId = null) {
 	if (isNew && hasAutoTitle) newState.newAndNoTitleChangeNoteId = note.id;
 
 	comp.setState(newState);
+
+	// await shared.refreshAttachedResources(comp, newState.note.body);
 
 	if (isNew) {
 		Note.updateGeolocation(note.id).then((geoNote) => {
@@ -105,6 +115,8 @@ shared.saveNoteButton_press = async function(comp, folderId = null) {
 			id: savedNote.id,
 		});
 	}
+
+	releaseMutex();
 }
 
 shared.saveOneProperty = async function(comp, name, value) {
@@ -142,6 +154,29 @@ shared.noteComponent_change = function(comp, propName, propValue) {
 	comp.setState(newState);
 }
 
+const resourceCache_ = {};
+
+shared.attachedResources = async function(noteBody) {
+	if (!noteBody) return {};
+	const resourceIds = await Note.linkedItemIdsByType(BaseModel.TYPE_RESOURCE, noteBody);
+
+	const output = {};
+	for (let i = 0; i < resourceIds.length; i++) {
+		const id = resourceIds[i];
+		if (resourceCache_[id]) {
+			output[id] = resourceCache_[id];
+		} else {
+			const resource = await Resource.load(id);
+			const isReady = await Resource.isReady(resource);
+			if (!isReady) continue;
+			resourceCache_[id] = resource;
+			output[id] = resource;
+		}
+	}
+
+	return output;
+}
+
 shared.refreshNoteMetadata = async function(comp, force = null) {
 	if (force !== true && !comp.state.showNoteMetadata) return;
 
@@ -175,6 +210,7 @@ shared.initState = async function(comp) {
 		folder: folder,
 		isLoading: false,
 		fromShare: comp.props.sharedData ? true : false,
+		noteResources: await shared.attachedResources(note ? note.body : ''),
 	});
 
 	if (comp.props.sharedData) {
@@ -193,6 +229,44 @@ shared.toggleIsTodo_onPress = function(comp) {
 	let newNote = Note.toggleIsTodo(comp.state.note);
 	let newState = { note: newNote };
 	comp.setState(newState);
+}
+
+shared.toggleCheckbox = function(ipcMessage, noteBody) {
+	let newBody = noteBody.split('\n');
+	const p = ipcMessage.split(':');
+	const lineIndex = Number(p[p.length - 1]);
+	if (lineIndex >= newBody.length) {
+		reg.logger().warn('Checkbox line out of bounds: ', ipcMessage);
+		return newBody.join('\n');
+	}
+
+	let line = newBody[lineIndex];
+
+	const noCrossIndex = line.trim().indexOf('- [ ] ');
+	let crossIndex = line.trim().indexOf('- [x] ');
+	if (crossIndex < 0) crossIndex = line.trim().indexOf('- [X] ');
+
+	if (noCrossIndex < 0 && crossIndex < 0) {
+		reg.logger().warn('Could not find matching checkbox for message: ', ipcMessage);
+		return newBody.join('\n');
+	}
+
+	let isCrossLine = false;
+
+	if (noCrossIndex >= 0 && crossIndex >= 0) {
+		isCrossLine = crossIndex < noCrossIndex;
+	} else {
+		isCrossLine = crossIndex >= 0;
+	}
+
+	if (!isCrossLine) {
+		line = line.replace(/- \[ \] /, '- [x] ');
+	} else {  
+		line = line.replace(/- \[x\] /i, '- [ ] ');
+	}
+
+	newBody[lineIndex] = line;
+	return newBody.join('\n')
 }
 
 module.exports = shared;

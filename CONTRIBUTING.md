@@ -1,3 +1,7 @@
+**IMPORTANT:** At the moment pull requests for new features are no longer being accepted. More info there: https://github.com/laurent22/joplin/issues/1112
+
+* * *
+
 # User support
 
 For general discussion about Joplin, user support, software development questions, and to discuss new features, please go to the [Joplin Forum](https://discourse.joplin.cozic.net/). It is possible to login with your GitHub account.
@@ -12,13 +16,15 @@ If possible, **please provide a screenshot**. A screenshot showing the problem i
 
 Again, please check that it has not already been requested. If it has, simply **up-vote the issue** - the ones with the most up-votes are likely to be implemented. "+1" comments are not tracked.
 
-# Adding new features
+# Creating a pull request
 
-If you want to add a new feature, consider asking about it before implementing it or checking existing discussions to make sure it is within the scope of the project. Of course you are free to create the pull request directly but it is not guaranteed it is going to be accepted.
+- If you want to add a new feature, consider asking about it before implementing it or checking existing discussions to make sure it is within the scope of the project. That scope, due to limited resources, might be narrower than you think. As a rule of thumb **if your change is likely to involve more than 50 lines of code, you should discuss it in the forum**, just so that you don't waste your time implementing something that might not be accepted.
+
+- Bug fixes have a very high chance of being accepted.
+
+- A pull request that is relevant to the current roadmap has a very high chance of being accepted.
 
 Building the apps is relatively easy - please [see the build instructions](https://github.com/laurent22/joplin/blob/master/BUILD.md) for more details.
-
-Pull requests that automatically change many files tend to be rejected (for example changes that automatically update the code styling, or to add new lines to many files, or to automatically convert images to a different format) so if you have such a pull request in mind, please discuss it first in the forum.
 
 # Coding style
 

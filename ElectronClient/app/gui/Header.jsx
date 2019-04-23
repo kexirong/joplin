@@ -3,6 +3,7 @@ const { connect } = require('react-redux');
 const { reg } = require('lib/registry.js');
 const { themeStyle } = require('../theme.js');
 const { _ } = require('lib/locale.js');
+const { bridge } = require('electron').remote.require('./bridge');
 
 class HeaderComponent extends React.Component {
 
@@ -10,6 +11,7 @@ class HeaderComponent extends React.Component {
 		super();
 		this.state = {
 			searchQuery: '',
+			showSearchUsageLink: false,
 		};
 
 		this.scheduleSearchChangeEventIid_ = null;
@@ -37,11 +39,39 @@ class HeaderComponent extends React.Component {
 			triggerOnQuery('');
 			if (this.searchElement_) this.searchElement_.focus();
 		}
+
+		this.search_onFocus = event => {
+			if (this.hideSearchUsageLinkIID_) {
+				clearTimeout(this.hideSearchUsageLinkIID_);
+				this.hideSearchUsageLinkIID_ = null;
+			}
+
+			this.setState({ showSearchUsageLink: true });
+		}
+
+		this.search_onBlur = event => {
+			if (this.hideSearchUsageLinkIID_) return;
+
+			this.hideSearchUsageLinkIID_ = setTimeout(() => {
+				this.setState({ showSearchUsageLink: false });
+			}, 5000);
+		}
+
+		this.searchUsageLink_click = event => {
+			bridge().openExternal('https://joplinapp.org/#searching');
+		}
 	}
 
 	async componentWillReceiveProps(nextProps) {
 		if (nextProps.windowCommand) {
 			this.doCommand(nextProps.windowCommand);
+		}
+	}
+
+	componentWillUnmount() {
+		if (this.hideSearchUsageLinkIID_) {
+			clearTimeout(this.hideSearchUsageLinkIID_);
+			this.hideSearchUsageLinkIID_ = null;
 		}
 	}
 
@@ -100,11 +130,16 @@ class HeaderComponent extends React.Component {
 	}
 
 	makeSearch(key, style, options, state) {
+		const theme = themeStyle(this.props.theme);
+
 		const inputStyle = {
 			display: 'flex',
 			flex: 1,
-			paddingLeft: 4,
-			paddingRight: 4,
+			paddingLeft: 6,
+			paddingRight: 6,
+			paddingTop: 1,  // vertical alignment with buttons
+			paddingBottom: 0,  // vertical alignment with buttons
+			height: style.fontSize * 2,
 			color: style.color,
 			fontSize: style.fontSize,
 			fontFamily: style.fontFamily,
@@ -137,6 +172,10 @@ class HeaderComponent extends React.Component {
 		const icon = <i style={iconStyle} className={"fa " + iconName}></i>
 		if (options.onQuery) this.searchOnQuery_ = options.onQuery;
 
+		const usageLink = !this.state.showSearchUsageLink ? null : (
+			<a onClick={this.searchUsageLink_click} style={theme.urlStyle} href="#">{_('Usage')}</a>
+		);
+
 		return (
 			<div key={key} style={containerStyle}>
 				<input
@@ -146,12 +185,15 @@ class HeaderComponent extends React.Component {
 					value={state.searchQuery}
 					onChange={this.search_onChange}
 					ref={elem => this.searchElement_ = elem}
+					onFocus={this.search_onFocus}
+					onBlur={this.search_onBlur}
 				/>
 				<a
 					href="#"
 					style={searchButton}
 					onClick={this.search_onClear}
 				>{icon}</a>
+				{usageLink}
 			</div>);
 	}
 

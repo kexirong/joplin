@@ -84,6 +84,8 @@ async function main() {
 
 	console.info('Copying APK to ' + apkFilePath);
 	await fs.copy('ReactNativeClient/android/app/build/outputs/apk/release/app-release.apk', apkFilePath);
+	console.info('Copying APK to ' + releaseDir + '/joplin-latest.apk');
+	await fs.copy('ReactNativeClient/android/app/build/outputs/apk/release/app-release.apk', releaseDir + '/joplin-latest.apk');
 
 	console.info('Updating Readme URL...');
 
@@ -100,7 +102,7 @@ async function main() {
 
 	console.info('Creating GitHub release ' + tagName + '...');
 
-	const release = await githubRelease(projectName, tagName, false);
+	const release = await githubRelease(projectName, tagName);
 	const uploadUrlTemplate = uriTemplate.parse(release.upload_url);
 	const uploadUrl = uploadUrlTemplate.expand({ name: apkFilename });
 

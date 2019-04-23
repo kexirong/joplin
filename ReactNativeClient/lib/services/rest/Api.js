@@ -13,6 +13,8 @@ const { shim } = require('lib/shim');
 const HtmlToMd = require('lib/HtmlToMd');
 const { fileExtension, safeFileExtension, safeFilename, filename } = require('lib/path-utils');
 const ApiResponse = require('lib/services/rest/ApiResponse');
+const SearchEngineUtils = require('lib/services/SearchEngineUtils');
+const { FoldersScreenUtils } = require('lib/folders-screen-utils.js');
 
 class ApiError extends Error {
 
@@ -103,7 +105,7 @@ class Api {
 		if (!this[parsedPath.callName]) throw new ErrorNotFound();
 
 		try {
-			return this[parsedPath.callName](request, id, link);
+			return await this[parsedPath.callName](request, id, link);
 		} catch (error) {
 			if (!error.httpCode) error.httpCode = 500;
 			throw error;
@@ -118,8 +120,10 @@ class Api {
 		return this.logger_;
 	}
 
-	get readonlyProperties() {
-		return ['id', 'created_time', 'updated_time', 'encryption_blob_encrypted', 'encryption_applied', 'encryption_cipher_text'];
+	readonlyProperties(requestMethod) {
+		const output = ['created_time', 'updated_time', 'encryption_blob_encrypted', 'encryption_applied', 'encryption_cipher_text'];
+		if (requestMethod !== 'POST') output.splice(0, 0, 'id');
+		return output;
 	}
 
 	fields_(request, defaultFields) {
@@ -174,7 +178,7 @@ class Api {
 
 		if (request.method === 'PUT' && id) {
 			const model = await getOneModel();
-			let newModel = Object.assign({}, model, request.bodyJson(this.readonlyProperties));
+			let newModel = Object.assign({}, model, request.bodyJson(this.readonlyProperties('PUT')));
 			newModel = await ModelClass.save(newModel, { userSideValidation: true });
 			return newModel;
 		}
@@ -186,8 +190,11 @@ class Api {
 		}
 
 		if (request.method === 'POST') {
-			const model = request.bodyJson(this.readonlyProperties);
-			const result = await ModelClass.save(model, { userSideValidation: true });
+			const props = this.readonlyProperties('POST');
+			const idIdx = props.indexOf('id');
+			if (idIdx >= 0) props.splice(idIdx, 1);
+			const model = request.bodyJson(props);
+			const result = await ModelClass.save(model, this.defaultSaveOptions_(model, 'POST'));
 			return result;
 		}
 
@@ -202,9 +209,22 @@ class Api {
 		throw new ErrorMethodNotAllowed();
 	}
 
+	async action_search(request) {
+		this.checkToken_(request);
+
+		if (request.method !== 'GET') throw new ErrorMethodNotAllowed();
+
+		const query = request.query.query;
+		if (!query) throw new ErrorBadRequest('Missing "query" parameter');
+
+		return await SearchEngineUtils.notesForQuery(query, this.notePreviewsOptions_(request));
+	}
+
 	async action_folders(request, id = null, link = null) {
 		if (request.method === 'GET' && !id) {
-			return await Folder.allAsTree({ fields: this.fields_(request, ['id', 'parent_id', 'title']) });
+			const folders = await FoldersScreenUtils.allForDisplay({ fields: this.fields_(request, ['id', 'parent_id', 'title']) });
+			const output = await Folder.allAsTree(folders);
+			return output;
 		}
 
 		if (request.method === 'GET' && id) {
@@ -286,9 +306,8 @@ class Api {
 		if (request.method === 'POST') {
 			if (!request.files.length) throw new ErrorBadRequest('Resource cannot be created without a file');
 			const filePath = request.files[0].path;
-			const resource = await shim.createResourceFromPath(filePath);
-			const newResource = Object.assign({}, resource, request.bodyJson(this.readonlyProperties));
-			return await Resource.save(newResource);
+			const defaultProps = request.bodyJson(this.readonlyProperties('POST'));
+			return shim.createResourceFromPath(filePath, defaultProps);
 		}
 
 		return this.defaultAction_(BaseModel.TYPE_RESOURCE, request, id, link);
@@ -298,6 +317,12 @@ class Api {
 		const fields = this.fields_(request, []); // previews() already returns default fields
 		const options = {};
 		if (fields.length) options.fields = fields;
+		return options;
+	}
+
+	defaultSaveOptions_(model, requestMethod) {
+		const options = { userSideValidation: true };
+		if (requestMethod === 'POST' && model.id) options.isNew = true;
 		return options;
 	}
 
@@ -323,6 +348,9 @@ class Api {
 		if (request.method === 'POST') {
 			const requestId = Date.now();
 			const requestNote = JSON.parse(request.body);
+
+			const imageSizes = requestNote.image_sizes ? requestNote.image_sizes : {};
+
 			let note = await this.requestNoteToNote(requestNote);
 
 			const imageUrls = markdownUtils.extractImageUrls(note.body);
@@ -335,12 +363,11 @@ class Api {
 
 			result = await this.createResourcesFromPaths_(result);
 			await this.removeTempFiles_(result);
-			note.body = this.replaceImageUrlsByResources_(note.body, result);
+			note.body = this.replaceImageUrlsByResources_(note.body, result, imageSizes);
 
 			this.logger().info('Request (' + requestId + '): Saving note...');
 
-			const saveOptions = {};
-			if (note.id) saveOptions.isNew = true;
+			const saveOptions = this.defaultSaveOptions_(note, 'POST');
 			note = await Note.save(note, saveOptions);
 
 			if (requestNote.tags) {
@@ -455,7 +482,7 @@ class Api {
 
 			return new Promise(async (resolve, reject) => {
 				const imagePath = await this.downloadImage_(url);
-				if (imagePath) output[url] = { path: imagePath };
+				if (imagePath) output[url] = { path: imagePath, originalUrl: url };
 				resolve();
 			});
 		}
@@ -493,12 +520,18 @@ class Api {
 		}
 	}
 
-	replaceImageUrlsByResources_(md, urls) {
+	replaceImageUrlsByResources_(md, urls, imageSizes) {
 		let output = md.replace(/(!\[.*?\]\()([^\s\)]+)(.*?\))/g, (match, before, imageUrl, after) => {
 			const urlInfo = urls[imageUrl];
 			if (!urlInfo || !urlInfo.resource) return before + imageUrl + after;
+			const imageSize = imageSizes[urlInfo.originalUrl];
 			const resourceUrl = Resource.internalUrl(urlInfo.resource);
-			return before + resourceUrl + after;
+
+			if (imageSize && (imageSize.naturalWidth !== imageSize.width || imageSize.naturalHeight !== imageSize.height)) {
+				return '<img width="' + imageSize.width + '" height="' + imageSize.height + '" src="' + resourceUrl + '"/>';
+			} else {
+				return before + resourceUrl + after;
+			}
 		});
 
 		return output;

@@ -1,7 +1,7 @@
 require('app-module-path').addPath(__dirname);
 
 const { time } = require('lib/time-utils.js');
-const { setupDatabase, setupDatabaseAndSynchronizer, db, synchronizer, fileApi, sleep, clearDatabase, switchClient, syncTargetId, encryptionService, loadEncryptionMasterKey, fileContentEqual, decryptionWorker, checkThrowAsync, asyncTest } = require('test-utils.js');
+const { setupDatabase, allSyncTargetItemsEncrypted, setupDatabaseAndSynchronizer, db, synchronizer, fileApi, sleep, clearDatabase, switchClient, syncTargetId, encryptionService, loadEncryptionMasterKey, fileContentEqual, decryptionWorker, checkThrowAsync, asyncTest } = require('test-utils.js');
 const { shim } = require('lib/shim.js');
 const fs = require('fs-extra');
 const Folder = require('lib/models/Folder.js');
@@ -15,6 +15,7 @@ const MasterKey = require('lib/models/MasterKey');
 const BaseItem = require('lib/models/BaseItem.js');
 const BaseModel = require('lib/BaseModel.js');
 const SyncTargetRegistry = require('lib/SyncTargetRegistry.js');
+const WelcomeUtils = require('lib/WelcomeUtils');
 
 process.on('unhandledRejection', (reason, p) => {
 	console.log('Unhandled Rejection at: Promise', p, 'reason:', reason);
@@ -26,38 +27,6 @@ async function allItems() {
 	let folders = await Folder.all();
 	let notes = await Note.all();
 	return folders.concat(notes);
-}
-
-async function allSyncTargetItemsEncrypted() {
-	const list = await fileApi().list();
-	const files = list.items;
-
-	//console.info(Setting.value('resourceDir'));
-
-	let totalCount = 0;
-	let encryptedCount = 0;
-	for (let i = 0; i < files.length; i++) {
-		const file = files[i];
-		const remoteContentString = await fileApi().get(file.path);
-		const remoteContent = await BaseItem.unserialize(remoteContentString);
-		const ItemClass = BaseItem.itemClass(remoteContent);
-
-		if (!ItemClass.encryptionSupported()) continue;
-
-		totalCount++;
-
-		if (remoteContent.type_ === BaseModel.TYPE_RESOURCE) {
-			const content = await fileApi().get('.resource/' + remoteContent.id);
-			totalCount++;
-			if (content.substr(0, 5) === 'JED01') output = encryptedCount++;
-		}
-
-		if (!!remoteContent.encryption_applied) encryptedCount++;
-	}
-
-	if (!totalCount) throw new Error('No encryptable item on sync target');
-
-	return totalCount === encryptedCount;
 }
 
 async function localItemsSameAsRemote(locals, expect) {
@@ -1097,6 +1066,48 @@ describe('Synchronizer', function() {
 		await synchronizer().start();
 		let note2 = await Note.load(note.id);
 		expect(note2.title).toBe("un UPDATE");
+	}));
+
+	it("should create a new Welcome notebook on each client", asyncTest(async () => {
+		// Create the Welcome items on two separate clients
+
+		await WelcomeUtils.createWelcomeItems();
+		await synchronizer().start();
+
+		await switchClient(2);
+
+		await WelcomeUtils.createWelcomeItems();
+		const beforeFolderCount = (await Folder.all()).length;
+		const beforeNoteCount = (await Note.all()).length;
+		expect(beforeFolderCount === 1).toBe(true);
+		expect(beforeNoteCount > 1).toBe(true);
+		
+		await synchronizer().start();
+
+		const afterFolderCount = (await Folder.all()).length;
+		const afterNoteCount = (await Note.all()).length;
+
+		expect(afterFolderCount).toBe(beforeFolderCount * 2);
+		expect(afterNoteCount).toBe(beforeNoteCount * 2);
+
+		// Changes to the Welcome items should be synced to all clients
+
+		const f1 = (await Folder.all())[0];
+		await Folder.save({ id: f1.id, title: 'Welcome MOD' });
+
+		await synchronizer().start();
+
+		await switchClient(1);
+
+		await synchronizer().start();
+
+		const f1_1 = await Folder.load(f1.id);
+		expect(f1_1.title).toBe('Welcome MOD');
+
+		// Now check that it created the duplicate tag
+
+		const tags = await Tag.modelSelectAll('SELECT * FROM tags WHERE title = "organising"');
+		expect(tags.length).toBe(2);
 	}));
 
 });

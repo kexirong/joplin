@@ -15,6 +15,7 @@ class AppComponent extends Component {
 		this.state = ({
 			contentScriptLoaded: false,
 			selectedTags: [],
+			contentScriptError: '',
 		});
 
 		this.confirm_click = () => {
@@ -49,6 +50,12 @@ class AppComponent extends Component {
 			});
 		}
 
+		this.clipUrl_click = () => {
+			bridge().sendCommandToActiveTab({
+				name: 'pageUrl',
+			});
+		}
+
 		this.clipScreenshot_click = async () => {
 			try {
 				const baseUrl = await bridge().clipperServerBaseUrl();
@@ -67,7 +74,7 @@ class AppComponent extends Component {
 		}
 
 		this.clipperServerHelpLink_click = () => {
-			bridge().tabsCreate({ url: 'https://joplin.cozic.net/clipper' });
+			bridge().tabsCreate({ url: 'https://joplinapp.org/clipper/' });
 		}
 
 		this.folderSelect_change = (event) => {
@@ -120,7 +127,14 @@ class AppComponent extends Component {
 	}
 
 	async componentDidMount() {
-		await this.loadContentScripts();
+		try {
+			await this.loadContentScripts();
+		} catch (error) {
+			console.error('Could not load content scripts', error);
+			this.setState({ contentScriptError: error.message });
+			return;
+		}
+
 		this.setState({
 			contentScriptLoaded: true,
 		});
@@ -160,7 +174,11 @@ class AppComponent extends Component {
 	}
 
 	render() {
-		if (!this.state.contentScriptLoaded) return 'Loading...';
+		if (!this.state.contentScriptLoaded) {
+			let msg = 'Loading...';
+			if (this.state.contentScriptError) msg = 'The Joplin extension is not available on this tab due to: ' + this.state.contentScriptError;
+			return <div style={{padding: 10, fontSize: 12, maxWidth: 200}}>{msg}</div>;
+		}
 
 		const warningComponent = !this.props.warning ? null : <div className="Warning">{ this.props.warning }</div>
 
@@ -192,12 +210,12 @@ class AppComponent extends Component {
 		} else if (hasContent) {
 			previewComponent = (
 				<div className="Preview">
+					<a className={"Confirm Button"} onClick={this.confirm_click}>Confirm</a>
 					<h2>Preview:</h2>
 					<input className={"Title"} value={content.title} onChange={this.contentTitle_change}/>
 					<div className={"BodyWrapper"}>
 						<div className={"Body"} dangerouslySetInnerHTML={{__html: content.body_html}}></div>
 					</div>
-					<a className={"Confirm Button"} onClick={this.confirm_click}>Confirm</a>
 				</div>
 			);
 		}
@@ -296,6 +314,7 @@ class AppComponent extends Component {
 						<li><a className="Button" onClick={this.clipComplete_click}>Clip complete page</a></li>
 						<li><a className="Button" onClick={this.clipSelection_click}>Clip selection</a></li>
 						<li><a className="Button" onClick={this.clipScreenshot_click}>Clip screenshot</a></li>
+						<li><a className="Button" onClick={this.clipUrl_click}>Clip URL</a></li>
 					</ul>
 				</div>
 				{ foldersComp() }

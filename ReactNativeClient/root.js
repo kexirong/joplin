@@ -28,6 +28,7 @@ const ResourceService = require('lib/services/ResourceService');
 const { JoplinDatabase } = require('lib/joplin-database.js');
 const { Database } = require('lib/database.js');
 const { NotesScreen } = require('lib/components/screens/notes.js');
+const { TagsScreen } = require('lib/components/screens/tags.js');
 const { NoteScreen } = require('lib/components/screens/note.js');
 const { ConfigScreen } = require('lib/components/screens/config.js');
 const { FolderScreen } = require('lib/components/screens/folder.js');
@@ -53,6 +54,8 @@ const DropdownAlert = require('react-native-dropdownalert').default;
 const ShareExtension = require('react-native-share-extension').default;
 const ResourceFetcher = require('lib/services/ResourceFetcher');
 const SearchEngine = require('lib/services/SearchEngine');
+const WelcomeUtils = require('lib/WelcomeUtils');
+const { themeStyle } = require('lib/components/global-style.js');
 
 const SyncTargetRegistry = require('lib/SyncTargetRegistry.js');
 const SyncTargetOneDrive = require('lib/SyncTargetOneDrive.js');
@@ -90,12 +93,13 @@ const generalMiddleware = store => next => async (action) => {
 	const result = next(action);
 	const newState = store.getState();
 
-	reduxSharedMiddleware(store, next, action);
+	await reduxSharedMiddleware(store, next, action);
 
 	if (action.type == "NAV_GO") Keyboard.dismiss();
 
 	if (["NOTE_UPDATE_ONE", "NOTE_DELETE", "FOLDER_UPDATE_ONE", "FOLDER_DELETE"].indexOf(action.type) >= 0) {
 		if (!await reg.syncTarget().syncStarted()) reg.scheduleSync(5 * 1000, { syncSteps: ["update_remote", "delete_remote"] });
+		SearchEngine.instance().scheduleSyncTables();
 	}
 
 	if (['EVENT_NOTE_ALARM_FIELD_CHANGE', 'NOTE_DELETE'].indexOf(action.type) >= 0) {
@@ -426,6 +430,11 @@ async function initialize(dispatch) {
 			reg.logger().info('db.ftsEnabled = ', Setting.value('db.ftsEnabled'));
 		}
 
+		// Note: for now we hard-code the folder sort order as we need to 
+		// create a UI to allow customisation (started in branch mobile_add_sidebar_buttons)
+		Setting.setValue('folders.sortOrder.field', 'title');
+		Setting.setValue('folders.sortOrder.reverse', false);
+
 		reg.logger().info('Sync target: ' + Setting.value('sync.target'));
 
 		setLocale(Setting.value('locale'));
@@ -450,7 +459,7 @@ async function initialize(dispatch) {
 
 		await FoldersScreenUtils.refreshFolders();
 
-		const tags = await Tag.all();
+		const tags = await Tag.allWithNotes();
 
 		dispatch({
 			type: 'TAG_UPDATE_ALL',
@@ -505,6 +514,7 @@ async function initialize(dispatch) {
 
 	SearchEngine.instance().setDb(reg.db());
 	SearchEngine.instance().setLogger(reg.logger());
+	SearchEngine.instance().scheduleSyncTables();
 
 	reg.scheduleSync().then(() => {
 		// Wait for the first sync before updating the notifications, since synchronisation
@@ -513,6 +523,8 @@ async function initialize(dispatch) {
 
 		DecryptionWorker.instance().scheduleStart();
 	});
+
+	await WelcomeUtils.install(dispatch);
 
 	reg.logger().info('Application initialized');
 }
@@ -637,13 +649,15 @@ class AppComponent extends React.Component {
 
 	render() {
 		if (this.props.appState != 'ready') return null;
+		const theme = themeStyle(this.props.theme);
 
-		const sideMenuContent = <SafeAreaView style={{flex:1}}><SideMenuContent/></SafeAreaView>;
+		const sideMenuContent = <SafeAreaView style={{flex:1, backgroundColor: theme.backgroundColor}}><SideMenuContent/></SafeAreaView>;
 
 		const appNavInit = {
 			Welcome: { screen: WelcomeScreen },
 			Notes: { screen: NotesScreen },
 			Note: { screen: NoteScreen },
+			Tags: { screen: TagsScreen },
 			Folder: { screen: FolderScreen },
 			OneDriveLogin: { screen: OneDriveLoginScreen },
 			DropboxLogin: { screen: DropboxLoginScreen },
@@ -666,7 +680,8 @@ class AppComponent extends React.Component {
 				}}
 				>
 				<MenuContext style={{ flex: 1 }}>
-					<SafeAreaView style={{flex:1}}>
+					<SafeAreaView style={{flex:0, backgroundColor: theme.raisedBackgroundColor}} />
+					<SafeAreaView style={{flex:1, backgroundColor: theme.backgroundColor}}>
 						<AppNav screens={appNavInit} />
 					</SafeAreaView>
 					<DropdownAlert ref={ref => this.dropdownAlert_ = ref} tapToCloseEnabled={true} />
@@ -684,6 +699,7 @@ const mapStateToProps = (state) => {
 		appState: state.appState,
 		noteSelectionEnabled: state.noteSelectionEnabled,
 		selectedFolderId: state.selectedFolderId,
+		theme: state.settings.theme
 	};
 };
 

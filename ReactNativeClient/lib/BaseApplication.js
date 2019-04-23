@@ -37,6 +37,7 @@ const ResourceFetcher = require('lib/services/ResourceFetcher');
 const SearchEngineUtils = require('lib/services/SearchEngineUtils');
 const DecryptionWorker = require('lib/services/DecryptionWorker');
 const BaseService = require('lib/services/BaseService');
+const SearchEngine = require('lib/services/SearchEngine');
 
 SyncTargetRegistry.addClass(SyncTargetFilesystem);
 SyncTargetRegistry.addClass(SyncTargetOneDrive);
@@ -155,6 +156,12 @@ class BaseApplication {
 				continue;
 			}
 
+			if (arg === '--enable-logging') {
+				// Electron-specific flag used for debugging - ignore it
+				argv.splice(0, 1);
+				continue;
+			}
+
 			if (arg.length && arg[0] == '-') {
 				throw new JoplinError(_('Unknown flag: %s', arg), 'flagError');
 			} else {
@@ -236,9 +243,30 @@ class BaseApplication {
 				id: state.selectedNoteIds && state.selectedNoteIds.length ? state.selectedNoteIds[0] : null,
 			});
 		} else {
+			const lastSelectedNoteIds = stateUtils.lastSelectedNoteIds(state);
+			const foundIds = [];
+			for (let i = 0; i < lastSelectedNoteIds.length; i++) {
+				const noteId = lastSelectedNoteIds[i];
+				let found = false;
+				for (let j = 0; j < notes.length; j++) {
+					if (notes[j].id === noteId) {
+						found = true;
+						break;
+					}
+				}
+				if (found) foundIds.push(noteId);
+			}
+
+			let selectedNoteId = null;
+			if (foundIds.length) {
+				selectedNoteId = foundIds[0];
+			} else {
+				selectedNoteId = notes.length ? notes[0].id : null;
+			}
+
 			this.store().dispatch({
 				type: 'NOTE_SELECT',
-				id: notes.length ? notes[0].id : null,
+				id: selectedNoteId,
 			});
 		}
 	}
@@ -277,9 +305,22 @@ class BaseApplication {
 		const result = next(action);
 		const newState = store.getState();
 		let refreshNotes = false;
+		let refreshFolders = false;
+		// let refreshTags = false;
 		let refreshNotesUseSelectedNoteId = false;
 
-		reduxSharedMiddleware(store, next, action);
+		await reduxSharedMiddleware(store, next, action);
+
+		if (this.hasGui()  && ["NOTE_UPDATE_ONE", "NOTE_DELETE", "FOLDER_UPDATE_ONE", "FOLDER_DELETE"].indexOf(action.type) >= 0) {
+			if (!await reg.syncTarget().syncStarted()) reg.scheduleSync(30 * 1000, { syncSteps: ["update_remote", "delete_remote"] });
+			SearchEngine.instance().scheduleSyncTables();
+		}
+
+		// Don't add FOLDER_UPDATE_ALL as refreshFolders() is calling it too, which
+		// would cause the sidebar to refresh all the time.
+		if (this.hasGui() && ["FOLDER_UPDATE_ONE"].indexOf(action.type) >= 0) {
+			refreshFolders = true;
+		}
 
 		if (action.type == 'FOLDER_SELECT' || action.type === 'FOLDER_DELETE' || action.type === 'FOLDER_AND_NOTE_SELECT' || (action.type === 'SEARCH_UPDATE' && newState.notesParentType === 'Folder')) {
 			Setting.setValue('activeFolderId', newState.selectedFolderId);
@@ -309,9 +350,20 @@ class BaseApplication {
 			refreshNotes = true;
 		}
 
+		// if (action.type == 'NOTE_DELETE') {
+		// 	refreshTags = true;
+		// }
+
 		if (refreshNotes) {
 			await this.refreshNotes(newState, refreshNotesUseSelectedNoteId);
 		}
+
+		// if (refreshTags) {
+		// 	this.dispatch({
+		// 		type: 'TAG_UPDATE_ALL',
+		// 		items: await Tag.allWithNotes(),
+		// 	});
+		// }
 
 		if ((action.type == 'SETTING_UPDATE_ONE' && (action.key == 'dateFormat' || action.key == 'timeFormat')) || (action.type == 'SETTING_UPDATE_ALL')) {
 			time.setDateFormat(Setting.value('dateFormat'));
@@ -350,10 +402,11 @@ class BaseApplication {
 		}
 
 		if (action.type === 'NOTE_UPDATE_ONE') {
-			// If there is a conflict, we refresh the folders so as to display "Conflicts" folder
-			if (action.note && action.note.is_conflict) {
-				await FoldersScreenUtils.refreshFolders();
-			}
+			refreshFolders = true;
+		}
+
+		if (this.hasGui() && ((action.type == 'SETTING_UPDATE_ONE' && action.key.indexOf('folders.sortOrder') === 0) || action.type == 'SETTING_UPDATE_ALL')) {
+			refreshFolders = 'now';
 		}
 
 		if (this.hasGui() && action.type == 'SETTING_UPDATE_ONE' && action.key == 'sync.interval' || action.type == 'SETTING_UPDATE_ALL') {
@@ -366,6 +419,14 @@ class BaseApplication {
 
 		if (this.hasGui() && action.type === 'SYNC_CREATED_RESOURCE') {
 			ResourceFetcher.instance().queueDownload(action.id);
+		}
+
+		if (refreshFolders) {
+			if (refreshFolders === 'now') {
+				await FoldersScreenUtils.refreshFolders();
+			} else {
+				await FoldersScreenUtils.scheduleRefreshFolders();
+			}
 		}
 
 	  	return result;
@@ -527,13 +588,15 @@ class BaseApplication {
 		ResourceFetcher.instance().setLogger(this.logger_);
 		ResourceFetcher.instance().start();
 
+		SearchEngine.instance().setDb(reg.db());
+		SearchEngine.instance().setLogger(reg.logger());
+		SearchEngine.instance().scheduleSyncTables();
+
 		let currentFolderId = Setting.value('activeFolderId');
 		let currentFolder = null;
 		if (currentFolderId) currentFolder = await Folder.load(currentFolderId);
 		if (!currentFolder) currentFolder = await Folder.defaultFolder();
 		Setting.setValue('activeFolderId', currentFolder ? currentFolder.id : '');
-
-		// await this.testing();process.exit();
 
 		return argv;
 	}

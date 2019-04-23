@@ -145,10 +145,15 @@ class ClipperServer {
 			const execRequest = async (request, body = '', files = []) => {
 				try {
 					const response = await this.api_.route(request.method, url.pathname, url.query, body, files);
-					writeResponse(200, response);
+					writeResponse(200, response ? response : '');
 				} catch (error) {
 					this.logger().error(error);
-					writeResponse(error.httpCode ? error.httpCode : 500, error.message);
+					const httpCode = error.httpCode ? error.httpCode : 500;
+					const msg = [];
+					if (httpCode >= 500) msg.push('Internal Server Error');
+					if (error.message) msg.push(error.message);
+
+					writeResponse(httpCode, { error: msg.join(': ') });
 				}
 			}
 

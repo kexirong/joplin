@@ -6,7 +6,7 @@ const Search = require('lib/models/Search.js');
 const { time } = require('lib/time-utils.js');
 const Setting = require('lib/models/Setting.js');
 const { IconButton } = require('./IconButton.min.js');
-const { urlDecode, escapeHtml } = require('lib/string-utils');
+const { urlDecode, escapeHtml, pregQuote, scriptType, substrWithEllipsis } = require('lib/string-utils');
 const Toolbar = require('./Toolbar.min.js');
 const TagList = require('./TagList.min.js');
 const { connect } = require('react-redux');
@@ -28,6 +28,7 @@ const ArrayUtils = require('lib/ArrayUtils');
 const ObjectUtils = require('lib/ObjectUtils');
 const urlUtils = require('lib/urlUtils');
 const dialogs = require('./dialogs');
+const NoteListUtils = require('./utils/NoteListUtils');
 const NoteSearchBar = require('./NoteSearchBar.min.js');
 const markdownUtils = require('lib/markdownUtils');
 const ExternalEditWatcher = require('lib/services/ExternalEditWatcher');
@@ -35,6 +36,8 @@ const ResourceFetcher = require('lib/services/ResourceFetcher');
 const { toSystemSlashes, safeFilename } = require('lib/path-utils');
 const { clipboard } = require('electron');
 const SearchEngine = require('lib/services/SearchEngine');
+const ModelCache = require('lib/services/ModelCache');
+const NoteTextViewer = require('./NoteTextViewer.min');
 
 require('brace/mode/markdown');
 // https://ace.c9.io/build/kitchen-sink.html
@@ -73,10 +76,13 @@ class NoteTextComponent extends React.Component {
 			// to automatically set the title.
 			newAndNoTitleChangeNoteId: null,
 			bodyHtml: '',
+			lastRenderCssFiles: [],
 			lastKeys: [],
 			showLocalSearch: false,
 			localSearch: Object.assign({}, this.localSearchDefaultState), 
 		};
+
+		this.webviewRef_ = React.createRef();
 
 		this.lastLoadedNoteId_ = null;
 
@@ -103,9 +109,9 @@ class NoteTextComponent extends React.Component {
 			}
 		}
 
-		this.onAlarmChange_ = (event) => { if (event.noteId === this.props.noteId) this.reloadNote(this.props); }
-		this.onNoteTypeToggle_ = (event) => { if (event.noteId === this.props.noteId) this.reloadNote(this.props); }
-		this.onTodoToggle_ = (event) => { if (event.noteId === this.props.noteId) this.reloadNote(this.props); }
+		this.onAlarmChange_ = (event) => { if (event.noteId === this.props.noteId) this.scheduleReloadNote(this.props); }
+		this.onNoteTypeToggle_ = (event) => { if (event.noteId === this.props.noteId) this.scheduleReloadNote(this.props); }
+		this.onTodoToggle_ = (event) => { if (event.noteId === this.props.noteId) this.scheduleReloadNote(this.props); }
 
 		this.onEditorPaste_ = async (event = null) => {
 			const formats = clipboard.availableFormats();
@@ -214,7 +220,7 @@ class NoteTextComponent extends React.Component {
 		this.externalEditWatcher_noteChange = (event) => {
 			if (!this.state.note || !this.state.note.id) return;
 			if (event.id === this.state.note.id) {
-				this.reloadNote(this.props);
+				this.scheduleReloadNote(this.props);
 			}
 		}
 
@@ -222,9 +228,10 @@ class NoteTextComponent extends React.Component {
 			if (!this.state.note || !this.state.note.body) return;
 			const resourceIds = await Note.linkedResourceIds(this.state.note.body);
 			if (resourceIds.indexOf(resource.id) >= 0) {
-				this.mdToHtml().clearCache();
+				// this.mdToHtml().clearCache();
 				this.lastSetHtml_ = '';
-				this.updateHtml(this.state.note.body);
+				this.scheduleHtmlUpdate();
+				//this.updateHtml(this.state.note.body);
 			}
 		}
 
@@ -257,6 +264,10 @@ class NoteTextComponent extends React.Component {
 				showLocalSearch: false,
 			});
 		}
+
+		this.titleField_keyDown = this.titleField_keyDown.bind(this);
+		this.webview_ipcMessage = this.webview_ipcMessage.bind(this);
+		this.webview_domReady = this.webview_domReady.bind(this);
 	}
 
 	// Note:
@@ -357,7 +368,6 @@ class NoteTextComponent extends React.Component {
 		this.saveIfNeeded();
 
 		this.mdToHtml_ = null;
-		this.destroyWebview();
 
 		eventManager.removeListener('alarmChange', this.onAlarmChange_);
 		eventManager.removeListener('noteTypeToggle', this.onNoteTypeToggle_);
@@ -398,6 +408,20 @@ class NoteTextComponent extends React.Component {
 		}, 500);
 	}
 
+	scheduleReloadNote(props, options = null) {
+		if (this.scheduleReloadNoteIID_) {
+			clearTimeout(this.scheduleReloadNoteIID_);
+			this.scheduleReloadNoteIID_ = null;
+		}
+
+		this.scheduleReloadNoteIID_ = setTimeout(() => {
+			this.reloadNote(props, options);
+		}, 10);
+	}
+
+	// Generally, reloadNote() should not be called directly so that it's not called multiple times
+	// from multiple places within a short interval of time. Instead use scheduleReloadNote() to
+	// delay reloading a bit and make sure that only one reload operation is performed.
 	async reloadNote(props, options = null) {
 		if (!options) options = {};
 		if (!('noReloadIfLocalChanges' in options)) options.noReloadIfLocalChanges = false;
@@ -412,12 +436,17 @@ class NoteTextComponent extends React.Component {
 		let loadingNewNote = true;
 		let parentFolder = null;
 		let noteTags = [];
+		let scrollPercent = 0;
 
 		if (props.newNote) {
 			note = Object.assign({}, props.newNote);
 			this.lastLoadedNoteId_ = null;
 		} else {
 			noteId = props.noteId;
+
+			scrollPercent = this.props.lastEditorScrollPercents[noteId];
+			if (!scrollPercent) scrollPercent = 0;
+
 			loadingNewNote = stateNoteId !== noteId;
 			noteTags = await Tag.tagsByNoteId(noteId);
 			this.lastLoadedNoteId_ = noteId;
@@ -438,7 +467,7 @@ class NoteTextComponent extends React.Component {
 		// If we are loading nothing (noteId == null), make sure to
 		// set webviewReady to false too because the webview component
 		// is going to be removed in render().
-		const webviewReady = this.webview_ && this.state.webviewReady && (noteId || props.newNote);
+		const webviewReady = !!this.webviewRef_.current && this.state.webviewReady && (!!noteId || !!props.newNote);
 
 		// Scroll back to top when loading new note
 		if (loadingNewNote) {
@@ -455,11 +484,13 @@ class NoteTextComponent extends React.Component {
 			if (this.props.newNote) {
 				const focusSettingName = !!note.is_todo ? 'newTodoFocus' : 'newNoteFocus';
 
-				if (Setting.value(focusSettingName) === 'title') {
-					if (this.titleField_) this.titleField_.focus();
-				} else {
-					if (this.editor_) this.editor_.editor.focus();
-				}
+				requestAnimationFrame(() => {
+					if (Setting.value(focusSettingName) === 'title') {
+						if (this.titleField_) this.titleField_.focus();
+					} else {
+						if (this.editor_) this.editor_.editor.focus();
+					}
+				});
 			}
 
 			if (this.editor_) {
@@ -481,6 +512,11 @@ class NoteTextComponent extends React.Component {
 				}
 				this.editor_.editor.clearSelection();
 				this.editor_.editor.moveCursorTo(0,0);
+
+				setTimeout(() => {
+					this.setEditorPercentScroll(scrollPercent ? scrollPercent : 0);
+					this.setViewerPercentScroll(scrollPercent ? scrollPercent : 0);
+				}, 10);
 			}
 		}
 
@@ -530,22 +566,24 @@ class NoteTextComponent extends React.Component {
 			}
 		}
 
+		// if (newState.note) await shared.refreshAttachedResources(this, newState.note.body);
+
 		this.updateHtml(newState.note ? newState.note.body : '');
 	}
 
 	async componentWillReceiveProps(nextProps) {
-		if (nextProps.newNote) {
-			await this.reloadNote(nextProps);
-		} else if ('noteId' in nextProps && nextProps.noteId !== this.props.noteId) {
-			await this.reloadNote(nextProps);
+		if (this.props.newNote !== nextProps.newNote && nextProps.newNote) {
+			await this.scheduleReloadNote(nextProps);
+		} else if (('noteId' in nextProps) && nextProps.noteId !== this.props.noteId) {
+			await this.scheduleReloadNote(nextProps);
 		} else if ('noteTags' in nextProps && this.areNoteTagsModified(nextProps.noteTags, this.state.noteTags)) {
 			this.setState({
 				noteTags: nextProps.noteTags
 			});
 		}
 
-		if ('syncStarted' in nextProps && !nextProps.syncStarted && !this.isModified()) {
-			await this.reloadNote(nextProps, { noReloadIfLocalChanges: true });
+		if ((nextProps.syncStarted !== this.props.syncStarted) && ('syncStarted' in nextProps) && !nextProps.syncStarted && !this.isModified()) {
+			await this.scheduleReloadNote(nextProps, { noReloadIfLocalChanges: true });
 		}
 
 		if (nextProps.windowCommand) {
@@ -602,7 +640,7 @@ class NoteTextComponent extends React.Component {
 		const arg0 = args && args.length >= 1 ? args[0] : null;
 		const arg1 = args && args.length >= 2 ? args[1] : null;
 
-		reg.logger().debug('Got ipc-message: ' + msg, args);
+		console.info('Got ipc-message: ' + msg, args);
 
 		if (msg.indexOf('checkboxclick:') === 0) {
 			// Ugly hack because setting the body here will make the scrollbar
@@ -611,7 +649,7 @@ class NoteTextComponent extends React.Component {
 			// "afterRender" event has been called.
 			this.restoreScrollTop_ = this.editorScrollTop();
 
-			const newBody = this.mdToHtml_.handleCheckboxClick(msg, this.state.note.body);
+			const newBody = shared.toggleCheckbox(msg, this.state.note.body);
 			this.saveOneProperty('body', newBody);
 		} else if (msg === 'setMarkerCount') {
 			const ls = Object.assign({}, this.state.localSearch);
@@ -678,6 +716,10 @@ class NoteTextComponent extends React.Component {
 					type: "FOLDER_AND_NOTE_SELECT",
 					folderId: item.parent_id,
 					noteId: item.id,
+					historyNoteAction: {
+						id: this.state.note.id,
+						parent_id: this.state.note.parent_id,
+					},
 				});
 			} else {
 				throw new Error('Unsupported item type: ' + item.type_);
@@ -687,6 +729,7 @@ class NoteTextComponent extends React.Component {
 				// When using the file:// protocol, openExternal doesn't work (does nothing) with URL-encoded paths
 				require('electron').shell.openExternal(urlDecode(msg));
 			} else {
+				console.info('OPEN URL');
 				require('electron').shell.openExternal(msg);
 			}
 		} else if (msg.indexOf('#') === 0) {
@@ -710,11 +753,31 @@ class NoteTextComponent extends React.Component {
 	}
 
 	setEditorPercentScroll(p) {
+		const noteId = this.props.noteId;
+
+		if (noteId) {
+			this.props.dispatch({
+				type: 'EDITOR_SCROLL_PERCENT_SET',
+				noteId: noteId,
+				percent: p,
+			});
+		}
+
 		this.editorSetScrollTop(p * this.editorMaxScroll());
 	}
 
 	setViewerPercentScroll(p) {
-		this.webview_.send('setPercentScroll', p);
+		const noteId = this.props.noteId;
+
+		if (noteId) {
+			this.props.dispatch({
+				type: 'EDITOR_SCROLL_PERCENT_SET',
+				noteId: noteId,
+				percent: p,
+			});
+		}
+
+		if (this.webviewRef_.current) this.webviewRef_.current.wrappedInstance.send('setPercentScroll', p);
 	}
 
 	editor_scroll() {
@@ -724,29 +787,20 @@ class NoteTextComponent extends React.Component {
 		}
 
 		const m = this.editorMaxScroll();
-		this.setViewerPercentScroll(m ? this.editorScrollTop() / m : 0);
+		const percent = m ? this.editorScrollTop() / m : 0;
+
+		this.setViewerPercentScroll(percent);
 	}
 
 	webview_domReady() {
-		if (!this.webview_) return;
+		if (!this.webviewRef_.current) return;
 
 		this.setState({
 			webviewReady: true,
 		});
 
-		// if (Setting.value('env') === 'dev') this.webview_.openDevTools();
-	}
-
-	webview_ref(element) {
-		if (this.webview_) {
-			if (this.webview_ === element) return;
-			this.destroyWebview();
-		}
-
-		if (!element) {
-			this.destroyWebview();
-		} else {
-			this.initWebview(element);
+		if (Setting.value('env') === 'dev') {
+			// this.webviewRef_.current.wrappedInstance.openDevTools();
 		}
 	}
 
@@ -766,7 +820,7 @@ class NoteTextComponent extends React.Component {
 			this.editor_.editor.renderer.on('afterRender', this.onAfterEditorRender_);
 
 			const cancelledKeys = [];
-			const letters = ['F', 'T', 'P', 'Q', 'L', ','];
+			const letters = ['F', 'T', 'P', 'Q', 'L', ',', 'G'];
 			for (let i = 0; i < letters.length; i++) {
 				const l = letters[i];
 				cancelledKeys.push('Ctrl+' + l);
@@ -822,35 +876,6 @@ class NoteTextComponent extends React.Component {
 		}
 	}
 
-	initWebview(wv) {
-		if (!this.webviewListeners_) {
-			this.webviewListeners_ = {
-				'dom-ready': this.webview_domReady.bind(this),
-				'ipc-message': this.webview_ipcMessage.bind(this),
-			};
-		}
-
-		for (let n in this.webviewListeners_) {
-			if (!this.webviewListeners_.hasOwnProperty(n)) continue;
-			const fn = this.webviewListeners_[n];
-			wv.addEventListener(n, fn);
-		}
-
-		this.webview_ = wv;
-	}
-
-	destroyWebview() {
-		if (!this.webview_) return;
-
-		for (let n in this.webviewListeners_) {
-			if (!this.webviewListeners_.hasOwnProperty(n)) continue;
-			const fn = this.webviewListeners_[n];
-			this.webview_.removeEventListener(n, fn);
-		}
-
-		this.webview_ = null;
-	}
-
 	aceEditor_change(body) {
 		shared.noteComponent_change(this, 'body', body);
 		this.scheduleHtmlUpdate();
@@ -872,28 +897,22 @@ class NoteTextComponent extends React.Component {
 		}
 	}
 
-	updateHtml(body = null) {
-		const mdOptions = {
-			onResourceLoaded: () => {
-				if (this.resourceLoadedTimeoutId_) {
-					clearTimeout(this.resourceLoadedTimeoutId_);
-					this.resourceLoadedTimeoutId_ = null;
-				}
-
-				this.resourceLoadedTimeoutId_ = setTimeout(() => {
-					this.resourceLoadedTimeoutId_ = null;
-					this.updateHtml();
-					this.forceUpdate();
-				}, 100);
-			},
-			postMessageSyntax: 'ipcProxySendToHost',
-		};
-
-		const theme = themeStyle(this.props.theme);
+	async updateHtml(body = null, options = null) {
+		if (!options) options = {};
+		if (!('useCustomCss' in options)) options.useCustomCss = true;
 
 		let bodyToRender = body;
 		if (bodyToRender === null) bodyToRender = this.state.note && this.state.note.body ? this.state.note.body : '';
-		bodyToRender = '<style>' + this.props.customCss + '</style>\n' + bodyToRender;
+
+		const theme = themeStyle(this.props.theme);
+
+		const mdOptions = {
+			codeTheme: theme.codeThemeCss,
+			postMessageSyntax: 'ipcProxySendToHost',
+			userCss: options.useCustomCss ? this.props.customCss : '',
+			resources: await shared.attachedResources(bodyToRender),
+		};
+
 		let bodyHtml = '';
 
 		const visiblePanes = this.props.visiblePanes || ['editor', 'viewer'];
@@ -903,30 +922,75 @@ class NoteTextComponent extends React.Component {
 			bodyToRender = '*' + _('This note has no content. Click on "%s" to toggle the editor and edit the note.', _('Layout')) + '*';
 		}
 
-		bodyHtml = this.mdToHtml().render(bodyToRender, theme, mdOptions);
+		const result = this.mdToHtml().render(bodyToRender, theme, mdOptions);
 
-		this.setState({ bodyHtml: bodyHtml });
+		this.setState({
+			bodyHtml: result.html,
+			lastRenderCssFiles: result.cssFiles,
+		});
+	}
+
+	titleField_keyDown(event) {
+		const keyCode = event.keyCode;
+
+		if (keyCode === 9) { // TAB
+			event.preventDefault();
+
+			if (event.shiftKey) {
+				this.props.dispatch({
+					type: 'WINDOW_COMMAND',
+					name: 'focusElement',
+					target: 'noteList',
+				});
+			} else {
+				this.props.dispatch({
+					type: 'WINDOW_COMMAND',
+					name: 'focusElement',
+					target: 'noteBody',
+				});
+			}
+		}
 	}
 
 	async doCommand(command) {
-		if (!command || !this.state.note) return;
+		if (!command) return;
 
 		let fn = null;
 
-		if (command.name === 'exportPdf' && this.webview_) {
+		if (command.name === 'exportPdf') {
 			fn = this.commandSavePdf;
-		} else if (command.name === 'print' && this.webview_) {
+		} else if (command.name === 'print') {
 			fn = this.commandPrint;
-		} else if (command.name === 'textBold') {
-			fn = this.commandTextBold;
-		} else if (command.name === 'textItalic') {
-			fn = this.commandTextItalic;
-		} else if (command.name === 'insertDateTime' ) {
-			fn = this.commandDateTime;
-		} else if (command.name === 'commandStartExternalEditing') {
-			fn = this.commandStartExternalEditing;
-		} else if (command.name === 'showLocalSearch') {
-			fn = this.commandShowLocalSearch;
+		}
+
+		if (this.state.note) {
+			if (command.name === 'textBold') {
+				fn = this.commandTextBold;
+			} else if (command.name === 'textItalic') {
+				fn = this.commandTextItalic;
+			} else if (command.name === 'textLink') {
+				fn = this.commandTextLink;
+			} else if (command.name === 'insertDateTime') {
+				fn = this.commandDateTime;
+			} else if (command.name === 'commandStartExternalEditing') {
+				fn = this.commandStartExternalEditing;
+			} else if (command.name === 'showLocalSearch') {
+				fn = this.commandShowLocalSearch;
+			}
+		}
+
+		if (command.name === 'focusElement' && command.target === 'noteTitle') {
+			fn = () => {
+				if (!this.titleField_) return;
+				this.titleField_.focus();
+			}
+		}
+
+		if (command.name === 'focusElement' && command.target === 'noteBody') {
+			fn = () => {
+				if (!this.editor_) return;
+				this.editor_.editor.focus();
+			}
 		}
 
 		if (!fn) return;
@@ -997,26 +1061,30 @@ class NoteTextComponent extends React.Component {
 		});
 	}
 
-	printTo_(target, options) {
+	async printTo_(target, options) {
+		if (this.props.selectedNoteIds.length !== 1 || !this.webviewRef_.current) {
+			throw new Error(_('Only one note can be printed or exported to PDF at a time.'));
+		}
+
 		const previousBody = this.state.note.body;
 		const tempBody = "# " + this.state.note.title + "\n\n" + previousBody;
 
 		const previousTheme = Setting.value('theme');
 		Setting.setValue('theme', Setting.THEME_LIGHT);
 		this.lastSetHtml_ = '';
-		this.updateHtml(tempBody);
+		await this.updateHtml(tempBody, { useCustomCss: false });
 		this.forceUpdate();
 
-		const restoreSettings = () => {
+		const restoreSettings = async () => {
 			Setting.setValue('theme', previousTheme);
 			this.lastSetHtml_ = '';
-			this.updateHtml(previousBody);
+			await this.updateHtml(previousBody);
 			this.forceUpdate();
 		}
 
 		setTimeout(() => {
 			if (target === 'pdf') {
-				this.webview_.printToPDF({}, (error, data) => {
+				this.webviewRef_.current.wrappedInstance.printToPDF({ printBackground: true }, (error, data) => {
 					restoreSettings();
 
 					if (error) {
@@ -1026,25 +1094,35 @@ class NoteTextComponent extends React.Component {
 					}
 				});
 			} else if (target === 'printer') {
-				this.webview_.print();
+				this.webviewRef_.current.wrappedInstance.print({ printBackground: true });
 				restoreSettings();
 			}
 		}, 100);		
 	}
 
-	commandSavePdf() {
-		const path = bridge().showSaveDialog({
-			filters: [{ name: _('PDF File'), extensions: ['pdf']}],
-			defaultPath: safeFilename(this.state.note.title),
-		});
+	async commandSavePdf() {
+		try {
+			if (!this.state.note) throw new Error(_('Only one note can be printed or exported to PDF at a time.'));
 
-		if (path) {
-			this.printTo_('pdf', { path: path });
+			const path = bridge().showSaveDialog({
+				filters: [{ name: _('PDF File'), extensions: ['pdf']}],
+				defaultPath: safeFilename(this.state.note.title),
+			});
+
+			if (!path) return;
+
+			await this.printTo_('pdf', { path: path });
+		} catch (error) {
+			bridge().showErrorMessageBox(error.message);
 		}
 	}
 
-	commandPrint() {
-		this.printTo_('printer');
+	async commandPrint() {
+		try {
+			await this.printTo_('printer');
+		} catch (error) {
+			bridge().showErrorMessageBox(error.message);
+		}		
 	}
 
 	async commandStartExternalEditing() {
@@ -1294,9 +1372,35 @@ class NoteTextComponent extends React.Component {
 		const toolbarItems = [];
 		if (note && this.state.folder && ['Search', 'Tag'].includes(this.props.notesParentType)) {
 			toolbarItems.push({
-				title: _('In: %s', this.state.folder.title),
-				iconName: 'fa-folder-o',
-				enabled: false,
+				title: _('In: %s', substrWithEllipsis(this.state.folder.title, 0, 16)),
+				iconName: 'fa-book',
+				onClick: () => {
+					this.props.dispatch({
+						type: "FOLDER_AND_NOTE_SELECT",
+						folderId: this.state.folder.id,
+						noteId: note.id,
+					});
+				},
+				// enabled: false,
+			});
+		}
+
+		if (this.props.historyNotes.length) {
+			toolbarItems.push({
+				tooltip: _('Back'),
+				iconName: 'fa-arrow-left',
+				onClick: () => {
+					if (!this.props.historyNotes.length) return;
+
+					const lastItem = this.props.historyNotes[this.props.historyNotes.length - 1];
+
+					this.props.dispatch({
+						type: "FOLDER_AND_NOTE_SELECT",
+						folderId: lastItem.parent_id,
+						noteId: lastItem.id,
+						historyNoteAction: 'pop',
+					});					
+				},
 			});
 		}
 
@@ -1310,25 +1414,6 @@ class NoteTextComponent extends React.Component {
 			tooltip: _('Italic'),
 			iconName: 'fa-italic',
 			onClick: () => { return this.commandTextItalic(); },
-		});
-
-		toolbarItems.push({
-			type: 'separator',
-		});
-
-		toolbarItems.push({
-			tooltip: _('Note properties'),
-			iconName: 'fa-info-circle',
-			onClick: () => {
-				const n = this.state.note;
-				if (!n || !n.id) return;
-
-				this.props.dispatch({
-					type: 'WINDOW_COMMAND',
-					name: 'commandNoteProperties',
-					noteId: n.id,
-				});
-			},
 		});
 
 		toolbarItems.push({
@@ -1432,7 +1517,78 @@ class NoteTextComponent extends React.Component {
 			toolbarItems.push(item);
 		}
 
+
+		toolbarItems.push({
+			tooltip: _('Note properties'),
+			iconName: 'fa-info-circle',
+			onClick: () => {
+				const n = this.state.note;
+				if (!n || !n.id) return;
+
+				this.props.dispatch({
+					type: 'WINDOW_COMMAND',
+					name: 'commandNoteProperties',
+					noteId: n.id,
+				});
+			},
+		});
+
 		return toolbarItems;
+	}
+
+	renderNoNotes(rootStyle) {
+		const emptyDivStyle = Object.assign({
+			backgroundColor: 'black',
+			opacity: 0.1,
+		}, rootStyle);
+		return <div style={emptyDivStyle}></div>
+	}
+
+	renderMultiNotes(rootStyle) {
+		const theme = themeStyle(this.props.theme);
+
+		const multiNotesButton_click = item => {
+			if (item.submenu) {
+				item.submenu.popup(bridge().window());
+			} else {
+				item.click();
+			}
+		}
+
+		const menu = NoteListUtils.makeContextMenu(this.props.selectedNoteIds, {
+			notes: this.props.notes,
+			dispatch: this.props.dispatch,
+		});
+
+		const buttonStyle = Object.assign({}, theme.buttonStyle, {
+			marginBottom: 10,
+		});
+
+		const itemComps = [];
+		const menuItems = menu.items;
+
+		for (let i = 0; i < menuItems.length; i++) {
+			const item = menuItems[i];
+			if (!item.enabled) continue;
+
+			itemComps.push(<button
+				key={item.label}
+				style={buttonStyle}
+				onClick={() => multiNotesButton_click(item)}
+			>{item.label}</button>);
+		}
+
+		rootStyle = Object.assign({}, rootStyle, {
+			paddingTop: rootStyle.paddingLeft,
+			display: 'inline-flex',
+			justifyContent: 'center',
+		});
+
+		return (<div style={rootStyle}>
+			<div style={{display: 'flex', flexDirection: 'column'}}>
+				{itemComps}
+			</div>
+		</div>);
 	}
 
 	render() {
@@ -1454,12 +1610,10 @@ class NoteTextComponent extends React.Component {
 
 		const innerWidth = rootStyle.width - rootStyle.paddingLeft - rootStyle.paddingRight - borderWidth;
 
-		if (!note || !!note.encryption_applied) {
-			const emptyDivStyle = Object.assign({
-				backgroundColor: 'black',
-				opacity: 0.1,
-			}, rootStyle);
-			return <div style={emptyDivStyle}></div>
+		if (this.props.selectedNoteIds.length > 1) {
+			return this.renderMultiNotes(rootStyle);
+		} else if (!note || !!note.encryption_applied) { //|| (note && !this.props.newNote && this.props.noteId && note.id !== this.props.noteId)) { // note.id !== props.noteId is when the note has not been loaded yet, and the previous one is still in the state
+			return this.renderNoNotes(rootStyle);
 		}
 
 		const titleBarStyle = {
@@ -1561,8 +1715,10 @@ class NoteTextComponent extends React.Component {
 
 			const htmlHasChanged = this.lastSetHtml_ !== html;
 			 if (htmlHasChanged) {
-				let options = {codeTheme: theme.codeThemeCss};
-				this.webview_.send('setHtml', html, options);
+				let options = {
+					cssFiles: this.state.lastRenderCssFiles,
+				};
+				this.webviewRef_.current.wrappedInstance.send('setHtml', html, options);
 				this.lastSetHtml_ = html;
 			}
 
@@ -1570,7 +1726,11 @@ class NoteTextComponent extends React.Component {
 			const markerOptions = {};
 
 			if (this.state.showLocalSearch) {
-				keywords = [this.state.localSearch.query];
+				keywords = [{
+					type: 'text',
+					value: this.state.localSearch.query,
+					accuracy: 'partially',
+				}]
 				markerOptions.selectedIndex = this.state.localSearch.selectedIndex;
 			} else {
 				const search = BaseModel.byId(this.props.searches, this.props.selectedSearchId);
@@ -1584,7 +1744,7 @@ class NoteTextComponent extends React.Component {
 			if (htmlHasChanged || keywordHash !== this.lastSetMarkers_ || !ObjectUtils.fieldsEqual(this.lastSetMarkersOptions_, markerOptions)) {
 				this.lastSetMarkers_ = keywordHash;
 				this.lastSetMarkersOptions_ = Object.assign({}, markerOptions);
-				this.webview_.send('setMarkers', keywords, markerOptions);
+				this.webviewRef_.current.wrappedInstance.send('setMarkers', keywords, markerOptions);
 			}
 		}
 
@@ -1601,6 +1761,7 @@ class NoteTextComponent extends React.Component {
 			style={titleEditorStyle}
 			value={note && note.title ? note.title : ''}
 			onChange={(event) => { this.title_changeText(event); }}
+			onKeyDown={this.titleField_keyDown}
 			placeholder={ this.props.newNote ? _('Creating new %s...', isTodo ? _('to-do') : _('note')) : '' }
 		/>
 
@@ -1615,31 +1776,12 @@ class NoteTextComponent extends React.Component {
 
 		const titleBarDate = <span style={Object.assign({}, theme.textStyle, {color: theme.colorFaded})}>{time.formatMsToLocal(note.user_updated_time)}</span>
 
-		const viewer =  <webview
-			style={viewerStyle}
-			preload="gui/note-viewer/preload.js"
-			src="gui/note-viewer/index.html"
-			webpreferences="contextIsolation"
-			ref={(elem) => { this.webview_ref(elem); } }
+		const viewer = <NoteTextViewer
+			ref={this.webviewRef_}
+			viewerStyle={viewerStyle}
+			onDomReady={this.webview_domReady}
+			onIpcMessage={this.webview_ipcMessage}
 		/>
-
-		// const markers = [{
-		// 	startRow: 2,
-		// 	startCol: 3,
-		// 	endRow: 2,
-		// 	endCol: 6,
-		// 	type: 'text',
-		// 	className: 'test-marker'
-		// }];
-
-		// markers={markers}
-		// editorProps={{$useWorker: false}}
-
-		// #note-editor .test-marker {
-		// 	background-color: red;
-		// 	color: yellow;
-		// 	position: absolute;
-		// }
 
 		const editorRootStyle = Object.assign({}, editorStyle);
 		delete editorRootStyle.width;
@@ -1662,11 +1804,12 @@ class NoteTextComponent extends React.Component {
 			showPrintMargin={false}
 			onSelectionChange={this.aceEditor_selectionChange}
 			onFocus={this.aceEditor_focus}
+			readOnly={visiblePanes.indexOf('editor') < 0}
 
 			// Disable warning: "Automatically scrolling cursor into view after
 			// selection change this will be disabled in the next version set
 			// editor.$blockScrolling = Infinity to disable this message"
-			editorProps={{$blockScrolling: true}}
+			editorProps={{$blockScrolling: Infinity}}
 
 			// This is buggy (gets outside the container)
 			highlightActiveLine={false}
@@ -1705,6 +1848,8 @@ class NoteTextComponent extends React.Component {
 const mapStateToProps = (state) => {
 	return {
 		noteId: state.selectedNoteIds.length === 1 ? state.selectedNoteIds[0] : null,
+		notes: state.notes,
+		selectedNoteIds: state.selectedNoteIds,
 		noteTags: state.selectedNoteTags,
 		folderId: state.selectedFolderId,
 		itemType: state.selectedItemType,
@@ -1719,6 +1864,8 @@ const mapStateToProps = (state) => {
 		selectedSearchId: state.selectedSearchId,
 		watchedNoteFiles: state.watchedNoteFiles,
 		customCss: state.customCss,
+		lastEditorScrollPercents: state.lastEditorScrollPercents,
+		historyNotes: state.historyNotes,
 	};
 };
 

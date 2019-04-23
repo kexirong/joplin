@@ -44,6 +44,23 @@ class BaseModel {
 		return null;
 	}
 
+	static modelIndexById(items, id) {
+		for (let i = 0; i < items.length; i++) {
+			if (items[i].id == id) return i;
+		}
+		return -1;
+	}
+
+	static modelsByIds(items, ids) {
+		const output = [];
+		for (let i = 0; i < items.length; i++) {
+			if (ids.indexOf(items[i].id) >= 0) {
+				output.push(items[i]);
+			}
+		}
+		return output;
+	}
+
 	// Prefer the use of this function to compare IDs as it handles the case where
 	// one ID is null and the other is "", in which case they are actually considered to be the same.
 	static idsEqual(id1, id2) {
@@ -175,6 +192,17 @@ class BaseModel {
 		if (!options.fields) options.fields = '*';
 
 		let q = this.applySqlOptions(options, 'SELECT ' + this.db().escapeFields(options.fields) + ' FROM `' + this.tableName() + '`');
+		return this.modelSelectAll(q.sql);
+	}
+
+	static async byIds(ids, options = null) {
+		if (!ids.length) return [];
+		if (!options) options = {};
+		if (!options.fields) options.fields = '*';
+
+		let sql = 'SELECT ' + this.db().escapeFields(options.fields) + ' FROM `' + this.tableName() + '`';
+		sql += ' WHERE id IN ("' + ids.join('","') + '")';
+		let q = this.applySqlOptions(options, sql);
 		return this.modelSelectAll(q.sql);
 	}
 

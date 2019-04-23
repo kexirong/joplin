@@ -16,6 +16,11 @@ const defaultState = {
 	selectedTagId: null,
 	selectedSearchId: null,
 	selectedItemType: 'note',
+	lastSelectedNotesIds: {
+		Folder: {},
+		Tag: {},
+		Search: {},
+	},
 	showSideMenu: false,
 	screens: {},
 	historyCanGoBack: false,
@@ -42,6 +47,8 @@ const defaultState = {
 	resourceFetcher: {
 		toFetchCount: 0,
 	},
+	historyNotes: [],
+	plugins: {},
 };
 
 const stateUtils = {};
@@ -51,6 +58,30 @@ stateUtils.notesOrder = function(stateSettings) {
 		by: stateSettings['notes.sortOrder.field'],
 		dir: stateSettings['notes.sortOrder.reverse'] ? 'DESC' : 'ASC',
 	}];
+}
+
+stateUtils.foldersOrder = function(stateSettings) {
+	return [{
+		by: stateSettings['folders.sortOrder.field'],
+		dir: stateSettings['folders.sortOrder.reverse'] ? 'DESC' : 'ASC',
+	}];
+}
+
+stateUtils.parentItem = function(state) {
+	const t = state.notesParentType;
+	let id = null;
+	if (t === 'Folder') id = state.selectedFolderId;
+	if (t === 'Tag') id = state.selectedTagId;
+	if (t === 'Search') id = state.selectedSearchId;
+	if (!t || !id) return null;
+	return { type: t, id: id };
+}
+
+stateUtils.lastSelectedNoteIds = function(state) {
+	const parent = stateUtils.parentItem(state);
+	if (!parent) return [];
+	const output = state.lastSelectedNotesIds[parent.type][parent.id];
+	return output ? output : [];
 }
 
 function arrayHasEncryptedItems(array) {
@@ -172,7 +203,10 @@ function defaultNotesParentType(state, exclusion) {
 	return newNotesParentType;
 }
 
-function changeSelectedFolder(state, action) {
+function changeSelectedFolder(state, action, options = null) {
+	if (!options) options = {};
+	if (!('clearNoteHistory' in options)) options.clearNoteHistory = true;
+
 	newState = Object.assign({}, state);
 	newState.selectedFolderId = 'folderId' in action ? action.folderId : action.id;
 	if (!newState.selectedFolderId) {
@@ -180,10 +214,31 @@ function changeSelectedFolder(state, action) {
 	} else {
 		newState.notesParentType = 'Folder';
 	}
+
+	if (newState.selectedFolderId === state.selectedFolderId && newState.notesParentType === state.notesParentType) return state;
+
+	if (options.clearNoteHistory) newState.historyNotes = [];
+	if (options.clearSelectedNoteIds) newState.selectedNoteIds = [];
+
 	return newState;
 }
 
-function changeSelectedNotes(state, action) {
+function recordLastSelectedNoteIds(state, noteIds) {
+	const newOnes = Object.assign({}, state.lastSelectedNotesIds);
+	const parent = stateUtils.parentItem(state);
+	if (!parent) return state;
+
+	newOnes[parent.type][parent.id] = noteIds.slice();
+
+	return Object.assign({}, state, {
+		lastSelectedNotesIds: newOnes,
+	});
+}
+
+function changeSelectedNotes(state, action, options = null) {
+	if (!options) options = {};
+	if (!('clearNoteHistory' in options)) options.clearNoteHistory = true;
+
 	let noteIds = [];
 	if (action.id) noteIds = [action.id];
 	if (action.ids) noteIds = action.ids;
@@ -194,19 +249,14 @@ function changeSelectedNotes(state, action) {
 	let newState = Object.assign({}, state);
 
 	if (action.type === 'NOTE_SELECT') {
+		if (JSON.stringify(newState.selectedNoteIds) === JSON.stringify(noteIds)) return state;
 		newState.selectedNoteIds = noteIds;
 		newState.newNote = null;
-		return newState;
-	}
-
-	if (action.type === 'NOTE_SELECT_ADD') {
+	} else if (action.type === 'NOTE_SELECT_ADD') {
 		if (!noteIds.length) return state;
 		newState.selectedNoteIds = ArrayUtils.unique(newState.selectedNoteIds.concat(noteIds));
 		newState.newNote = null;
-		return newState;
-	}
-
-	if (action.type === 'NOTE_SELECT_REMOVE') {
+	} else if (action.type === 'NOTE_SELECT_REMOVE') {
 		if (!noteIds.length) return state; // Nothing to unselect
 		if (state.selectedNoteIds.length <= 1) return state; // Cannot unselect the last note
 
@@ -218,11 +268,7 @@ function changeSelectedNotes(state, action) {
 		}
 		newState.selectedNoteIds = newSelectedNoteIds;
 		newState.newNote = null;
-
-		return newState;
-	}
-
-	if (action.type === 'NOTE_SELECT_TOGGLE') {
+	} else if (action.type === 'NOTE_SELECT_TOGGLE') {
 		if (!noteIds.length) return state;
 
 		if (newState.selectedNoteIds.indexOf(noteIds[0]) >= 0) {
@@ -232,11 +278,15 @@ function changeSelectedNotes(state, action) {
 		}
 
 		newState.newNote = null;
-
-		return newState;
+	} else { 
+		throw new Error('Unreachable');
 	}
 
-	throw new Error('Unreachable');
+	newState = recordLastSelectedNoteIds(newState, newState.selectedNoteIds);
+
+	if (options.clearNoteHistory) newState.historyNotes = [];
+
+	return newState;	
 }
 
 function removeItemFromArray(array, property, value) {
@@ -299,14 +349,27 @@ const reducer = (state = defaultState, action) => {
 
 			case 'FOLDER_SELECT':
 
-				newState = changeSelectedFolder(state, action);
+				newState = changeSelectedFolder(state, action, { clearSelectedNoteIds: true });
 				break;
 
 			case 'FOLDER_AND_NOTE_SELECT':
 
-				newState = changeSelectedFolder(state, action);
+				newState = changeSelectedFolder(state, action, { clearNoteHistory: false });
 				const noteSelectAction = Object.assign({}, action, { type: 'NOTE_SELECT'});
-				newState = changeSelectedNotes(newState, noteSelectAction);
+				newState = changeSelectedNotes(newState, noteSelectAction, { clearNoteHistory: false });
+
+				if (action.historyNoteAction) {
+					const historyNotes = newState.historyNotes.slice();
+					if (typeof action.historyNoteAction === 'object') {	
+						historyNotes.push(Object.assign({}, action.historyNoteAction));
+					} else if (action.historyNoteAction === 'pop') {
+						historyNotes.pop();
+					}
+					newState.historyNotes = historyNotes;
+				} else {
+					newState.historyNotes = [];
+				}
+				
 				break;
 
 			case 'SETTING_UPDATE_ALL':
@@ -585,6 +648,10 @@ const reducer = (state = defaultState, action) => {
 
 				newState = Object.assign({}, state);
 				newState.newNote = action.item;
+				if (newState.selectedNoteIds.length > 1) {
+					newState.selectedNoteIds = newState.selectedNoteIds.slice();
+					newState.selectedNoteIds = [newState.selectedNoteIds[0]];
+				}
 				break;
 
 			case 'CLIPPER_SERVER_SET':
@@ -624,6 +691,17 @@ const reducer = (state = defaultState, action) => {
 			case 'SET_NOTE_TAGS':
 				newState = Object.assign({}, state);
 				newState.selectedNoteTags = action.items;
+				break;
+
+			case 'PLUGIN_DIALOG_SET':
+
+				if (!action.pluginName) throw new Error('action.pluginName not specified');
+				newState = Object.assign({}, state);
+				const newPlugins = Object.assign({}, newState.plugins);
+				const newPlugin = newState.plugins[action.pluginName] ? Object.assign({}, newState.plugins[action.pluginName]) : {};
+				if ('open' in action) newPlugin.dialogOpen = action.open;
+				newPlugins[action.pluginName] = newPlugin;
+				newState.plugins = newPlugins;
 				break;
 
 		}

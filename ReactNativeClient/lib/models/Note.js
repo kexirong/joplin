@@ -2,8 +2,11 @@ const BaseModel = require('lib/BaseModel.js');
 const { sprintf } = require('sprintf-js');
 const BaseItem = require('lib/models/BaseItem.js');
 const ItemChange = require('lib/models/ItemChange.js');
+const Resource = require('lib/models/Resource.js');
 const Setting = require('lib/models/Setting.js');
 const { shim } = require('lib/shim.js');
+const { pregQuote } = require('lib/string-utils.js');
+const { toSystemSlashes, toFileProtocolPath } = require('lib/path-utils.js');
 const { time } = require('lib/time-utils.js');
 const { _ } = require('lib/locale.js');
 const ArrayUtils = require('lib/ArrayUtils.js');
@@ -27,7 +30,7 @@ class Note extends BaseItem {
 	}
 
 	static async serializeForEdit(note) {
-		return super.serialize(note, ['title', 'body']);
+		return this.replaceResourceInternalToExternalLinks(await super.serialize(note, ['title', 'body']));
 	}
 
 	static async unserializeForEdit(content) {
@@ -35,6 +38,7 @@ class Note extends BaseItem {
 		let output = await super.unserialize(content);
 		if (!output.title) output.title = '';
 		if (!output.body) output.body = '';
+		output.body = await this.replaceResourceExternalToInternalLinks(output.body);
 		return output;
 	}
 
@@ -165,6 +169,30 @@ class Note extends BaseItem {
 		return await this.linkedItemIdsByType(BaseModel.TYPE_RESOURCE, body);
 	}
 
+	static async replaceResourceInternalToExternalLinks(body) {
+		const resourceIds = await this.linkedResourceIds(body);
+		const Resource = this.getClass('Resource');
+
+		for (let i = 0; i < resourceIds.length; i++) {
+			const id = resourceIds[i];
+			const resource = await Resource.load(id);
+			if (!resource) continue;
+			body = body.replace(new RegExp(':/' + id, 'gi'), toFileProtocolPath(Resource.fullPath(resource)));
+		}
+
+		return body;
+	}
+
+	static async replaceResourceExternalToInternalLinks(body) {
+		const reString = pregQuote(toFileProtocolPath(Resource.baseDirectoryPath() + '/')) + '[a-zA-Z0-9\.]+';
+		const re = new RegExp(reString, 'gi');
+		body = body.replace(re, (match) => {
+			const id = Resource.pathToId(match);
+			return ':/' + id;
+		});
+		return body;
+	}
+
 	static new(parentId = '') {
 		let output = super.new();
 		output.parent_id = parentId;
@@ -237,8 +265,6 @@ class Note extends BaseItem {
 			conditionsParams: [value],
 			fields: '*',
 		}
-
-		// TODO: add support for limits on .search()
 
 		let results = await this.previews(folderId, options);
 		return results.length ? results[0] : null;
@@ -330,6 +356,20 @@ class Note extends BaseItem {
 	static preview(noteId, options = null) {
 		if (!options) options = { fields: null };
 		return this.modelSelectOne('SELECT ' + this.previewFieldsSql(options.fields) + ' FROM notes WHERE is_conflict = 0 AND id = ?', [noteId]);
+	}
+
+	static async search(options = null) {
+		if (!options) options = {};
+		if (!options.conditions) options.conditions = [];
+		if (!options.conditionsParams) options.conditionsParams = [];
+
+		if (options.bodyPattern) {
+			const pattern = options.bodyPattern.replace(/\*/g, '%');
+			options.conditions.push('body LIKE ?');
+			options.conditionsParams.push(pattern);
+		}
+
+		return super.search(options);
 	}
 
 	static conflictedNotes() {
@@ -447,6 +487,19 @@ class Note extends BaseItem {
 
 	static toggleIsTodo(note) {
 		return this.changeNoteType(note, !!note.is_todo ? 'note' : 'todo');
+	}
+
+	static toggleTodoCompleted(note) {
+		if (!('todo_completed' in note)) throw new Error('Missing "todo_completed" property');
+
+		note = Object.assign({}, note);
+		if (note.todo_completed) {
+			note.todo_completed = 0;
+		} else {
+			note.todo_completed = Date.now();
+		}
+		
+		return note;
 	}
 
 	static async duplicate(noteId, options = null) {

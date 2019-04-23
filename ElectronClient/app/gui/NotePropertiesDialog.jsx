@@ -16,12 +16,13 @@ class NotePropertiesDialog extends React.Component {
 
 		this.okButton_click = this.okButton_click.bind(this);
 		this.cancelButton_click = this.cancelButton_click.bind(this);
+		this.onKeyDown = this.onKeyDown.bind(this);
+		this.okButton = React.createRef();
 
 		this.state = {
 			formNote: null,
 			editedKey: null,
 			editedValue: null,
-			visible: false,
 		};
 
 		this.keyToLabel_ = {
@@ -33,13 +34,13 @@ class NotePropertiesDialog extends React.Component {
 		};
 	}
 
-	componentWillReceiveProps(newProps) {
-		if ('visible' in newProps && newProps.visible !== this.state.visible) {
-			this.setState({ visible: newProps.visible });
-		}
+	componentDidMount() {
+		this.loadNote(this.props.noteId);
+	}
 
-		if ('noteId' in newProps) {
-			this.loadNote(newProps.noteId);
+	componentDidUpdate() {
+		if (this.state.editedKey == null) {
+			this.okButton.current.focus();
 		}
 	}
 
@@ -101,25 +102,25 @@ class NotePropertiesDialog extends React.Component {
 		this.styles_ = {};
 		this.styleKey_ = styleKey;
 
-		this.styles_.modalLayer = {
-			zIndex: 9999,
-			display: 'flex',
-			position: 'absolute',
-			top: 0,
-			left: 0,
-			width: '100%',
-			height: '100%',
-			backgroundColor: 'rgba(0,0,0,0.6)',
-			alignItems: 'flex-start',
-			justifyContent: 'center',
-		};
+		// this.styles_.modalLayer = {
+		// 	zIndex: 9999,
+		// 	display: 'flex',
+		// 	position: 'absolute',
+		// 	top: 0,
+		// 	left: 0,
+		// 	width: '100%',
+		// 	height: '100%',
+		// 	backgroundColor: 'rgba(0,0,0,0.6)',
+		// 	alignItems: 'flex-start',
+		// 	justifyContent: 'center',
+		// };
 
-		this.styles_.dialogBox = {
-			backgroundColor: theme.backgroundColor,
-			padding: 16,
-			boxShadow: '6px 6px 20px rgba(0,0,0,0.5)',
-			marginTop: 20,
-		}
+		// this.styles_.dialogBox = {
+		// 	backgroundColor: theme.backgroundColor,
+		// 	padding: 16,
+		// 	boxShadow: '6px 6px 20px rgba(0,0,0,0.5)',
+		// 	marginTop: 20,
+		// }
 
 		this.styles_.controlBox = {
 			marginBottom: '1em',
@@ -152,7 +153,7 @@ class NotePropertiesDialog extends React.Component {
 			borderColor: theme.dividerColor,
 		};
 
-		this.styles_.dialogTitle = Object.assign({}, theme.h1Style, { marginBottom: '1.2em' });
+		// this.styles_.dialogTitle = Object.assign({}, theme.h1Style, { marginBottom: '1.2em' });
 
 		return this.styles_;
 	}
@@ -167,10 +168,6 @@ class NotePropertiesDialog extends React.Component {
 			await this.cancelProperty();
 		}
 
-		this.setState({
-			visible: false,
-		});
-
 		if (this.props.onClose) {
 			this.props.onClose();
 		}
@@ -182,6 +179,14 @@ class NotePropertiesDialog extends React.Component {
 
 	cancelButton_click() {
 		this.closeDialog(false);
+	}
+
+	onKeyDown(event) {
+		if (event.keyCode === 13) {
+			this.closeDialog(true);
+		} else if (event.keyCode === 27) {
+			this.closeDialog(false);
+		}
 	}
 
 	editPropertyButtonClick(key, initialValue) {
@@ -222,6 +227,7 @@ class NotePropertiesDialog extends React.Component {
 
 	async cancelProperty() {
 		return new Promise((resolve, reject) => {
+			this.okButton.current.focus();
 			this.setState({
 				editedKey: null,
 				editedValue: null
@@ -347,13 +353,20 @@ class NotePropertiesDialog extends React.Component {
 		const formNote = this.state.formNote;
 
 		const buttonComps = [];
-		buttonComps.push(<button key="ok" style={styles.button} onClick={this.okButton_click}>{_('Apply')}</button>);
+		buttonComps.push(
+			<button
+				key="ok"
+				style={styles.button}
+				onClick={this.okButton_click}
+				ref={this.okButton}
+				onKeyDown={this.onKeyDown}
+			>
+				{_('Apply')}
+			</button>
+		);
 		buttonComps.push(<button key="cancel" style={styles.button} onClick={this.cancelButton_click}>{_('Cancel')}</button>);
 
 		const noteComps = [];
-
-		const modalLayerStyle = Object.assign({}, styles.modalLayer);
-		if (!this.state.visible) modalLayerStyle.display = 'none';
 
 		if (formNote) {
 			for (let key in formNote) {
@@ -364,9 +377,9 @@ class NotePropertiesDialog extends React.Component {
 		}
 
 		return (
-			<div style={modalLayerStyle}>
-				<div style={styles.dialogBox}>
-					<div style={styles.dialogTitle}>{_('Note properties')}</div>
+			<div style={theme.dialogModalLayer}>
+				<div style={theme.dialogBox}>
+					<div style={theme.dialogTitle}>{_('Note properties')}</div>
 					<div>{noteComps}</div>
 					<div style={{ textAlign: 'right', marginTop: 10 }}>
 						{buttonComps}

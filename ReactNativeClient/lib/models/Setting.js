@@ -25,6 +25,8 @@ class Setting extends BaseModel {
 
 		const platform = shim.platformName();
 
+		const emptyDirWarning = _('Attention: If you change this location, make sure you copy all your content to it before syncing, otherwise all files will be removed! See the FAQ for more details: %s', 'https://joplinapp.org/faq/');
+
 		// A "public" setting means that it will show up in the various config screens (or config command for the CLI tool), however
 		// if if private a setting might still be handled and modified by the app. For instance, the settings related to sorting notes are not
 		// public for the mobile and desktop apps because they are handled separately in menus.
@@ -53,15 +55,15 @@ class Setting extends BaseModel {
 				options[Setting.TIME_FORMAT_2] = time.formatMsToLocal(now, Setting.TIME_FORMAT_2);
 				return options;
 			}},
-			'theme': { value: Setting.THEME_LIGHT, type: Setting.TYPE_INT, public: true, appTypes: ['mobile', 'desktop'], isEnum: true, label: () => _('Theme'), options: () => {
+			'theme': { value: Setting.THEME_LIGHT, type: Setting.TYPE_INT, public: true, appTypes: ['mobile', 'desktop'], isEnum: true, label: () => _('Theme'), section: 'appearance', options: () => {
 				let output = {};
 				output[Setting.THEME_LIGHT] = _('Light');
 				output[Setting.THEME_DARK] = _('Dark');
 				return output;
 			}},
-			'uncompletedTodosOnTop': { value: true, type: Setting.TYPE_BOOL, public: true, appTypes: ['cli'], label: () => _('Uncompleted to-dos on top') },
-			'showCompletedTodos': { value: true, type: Setting.TYPE_BOOL, public: true, appTypes: ['cli'], label: () => _('Show completed to-dos') },
-			'notes.sortOrder.field': { value: 'user_updated_time', type: Setting.TYPE_STRING, isEnum: true, public: true, appTypes: ['cli'], label: () => _('Sort notes by'), options: () => {
+			'uncompletedTodosOnTop': { value: true, type: Setting.TYPE_BOOL, section: 'note', public: true, appTypes: ['cli'], label: () => _('Uncompleted to-dos on top') },
+			'showCompletedTodos': { value: true, type: Setting.TYPE_BOOL, section: 'note', public: true, appTypes: ['cli'], label: () => _('Show completed to-dos') },
+			'notes.sortOrder.field': { value: 'user_updated_time', type: Setting.TYPE_STRING, section: 'note', isEnum: true, public: true, appTypes: ['cli'], label: () => _('Sort notes by'), options: () => {
 				const Note = require('lib/models/Note');
 				const noteSortFields = ['user_updated_time', 'user_created_time', 'title'];
 				const options = {};
@@ -70,43 +72,69 @@ class Setting extends BaseModel {
 				}
 				return options;
 			}},
-			'notes.sortOrder.reverse': { value: true, type: Setting.TYPE_BOOL, public: true, label: () => _('Reverse sort order'), appTypes: ['cli'] },
-			'trackLocation': { value: true, type: Setting.TYPE_BOOL, public: true, label: () => _('Save geo-location with notes') },
-			'newTodoFocus': { value: 'title', type: Setting.TYPE_STRING, isEnum: true, public: true, appTypes: ['desktop'], label: () => _('When creating a new to-do:'), options: () => {
+			'notes.sortOrder.reverse': { value: true, type: Setting.TYPE_BOOL, section: 'note', public: true, label: () => _('Reverse sort order'), appTypes: ['cli'] },
+			'folders.sortOrder.field': { value: 'title', type: Setting.TYPE_STRING, isEnum: true, public: true, appTypes: ['cli'], label: () => _('Sort notebooks by'), options: () => {
+				const Folder = require('lib/models/Folder');
+				const folderSortFields = ['title', 'last_note_user_updated_time'];
+				const options = {};
+				for (let i = 0; i < folderSortFields.length; i++) {
+					options[folderSortFields[i]] = toTitleCase(Folder.fieldToLabel(folderSortFields[i]));
+				}
+				return options;
+			}},
+			'folders.sortOrder.reverse': { value: true, type: Setting.TYPE_BOOL, public: true, label: () => _('Reverse sort order'), appTypes: ['cli'] },
+			'trackLocation': { value: true, type: Setting.TYPE_BOOL, section: 'note', public: true, label: () => _('Save geo-location with notes') },
+			'newTodoFocus': { value: 'title', type: Setting.TYPE_STRING, section: 'note', isEnum: true, public: true, appTypes: ['desktop'], label: () => _('When creating a new to-do:'), options: () => {
 				return {
 					'title': _('Focus title'),
 					'body': _('Focus body'),
 				};
 			}},
-			'newNoteFocus': { value: 'body', type: Setting.TYPE_STRING, isEnum: true, public: true, appTypes: ['desktop'], label: () => _('When creating a new note:'), options: () => {
+			'newNoteFocus': { value: 'body', type: Setting.TYPE_STRING, section: 'note', isEnum: true, public: true, appTypes: ['desktop'], label: () => _('When creating a new note:'), options: () => {
 				return {
 					'title': _('Focus title'),
 					'body': _('Focus body'),
 				};
 			}},
+			'markdown.softbreaks': { value: false, type: Setting.TYPE_BOOL, section: 'plugins', public: true, appTypes: ['mobile', 'desktop'], label: () => _('Enable soft breaks') },
+			'markdown.plugin.katex': {value: true, type: Setting.TYPE_BOOL, section: 'plugins', public: true, appTypes: ['mobile', 'desktop'], label: () => _('Enable math expressions')},
+			'markdown.plugin.mark': {value: true, type: Setting.TYPE_BOOL, section: 'plugins', public: true, appTypes: ['mobile', 'desktop'], label: () => _('Enable ==mark== syntax')},
+			'markdown.plugin.footnote': {value: true, type: Setting.TYPE_BOOL, section: 'plugins', public: true, appTypes: ['mobile', 'desktop'], label: () => _('Enable footnotes')},
+			'markdown.plugin.toc': {value: true, type: Setting.TYPE_BOOL, section: 'plugins', public: true, appTypes: ['mobile', 'desktop'], label: () => _('Enable table of contents extension')},
+			'markdown.plugin.sub': {value: false, type: Setting.TYPE_BOOL, section: 'plugins', public: true, appTypes: ['mobile', 'desktop'], label: () => _('Enable ~sub~ syntax')},
+			'markdown.plugin.sup': {value: false, type: Setting.TYPE_BOOL, section: 'plugins', public: true, appTypes: ['mobile', 'desktop'], label: () => _('Enable ^sup^ syntax')},
+			'markdown.plugin.deflist': {value: false, type: Setting.TYPE_BOOL, section: 'plugins', public: true, appTypes: ['mobile', 'desktop'], label: () => _('Enable deflist syntax')},
+			'markdown.plugin.abbr': {value: false, type: Setting.TYPE_BOOL, section: 'plugins', public: true, appTypes: ['mobile', 'desktop'], label: () => _('Enable abbreviation syntax')},
+			'markdown.plugin.emoji': {value: false, type: Setting.TYPE_BOOL, section: 'plugins', public: true, appTypes: ['mobile', 'desktop'], label: () => _('Enable markdown emoji')},
+			'markdown.plugin.insert': {value: false, type: Setting.TYPE_BOOL, section: 'plugins', public: true, appTypes: ['mobile', 'desktop'], label: () => _('Enable ++insert++ syntax')},
+			'markdown.plugin.multitable': {value: false, type: Setting.TYPE_BOOL, section: 'plugins', public: true, appTypes: ['mobile', 'desktop'], label: () => _('Enable multimarkdown table extension')},
+
 
 			// Tray icon (called AppIndicator) doesn't work in Ubuntu
 			// http://www.webupd8.org/2017/04/fix-appindicator-not-working-for.html
 			// Might be fixed in Electron 18.x but no non-beta release yet. So for now
 			// by default we disable it on Linux.
-			'showTrayIcon': { value: platform !== 'linux', type: Setting.TYPE_BOOL, public: true, appTypes: ['desktop'], label: () => _('Show tray icon'), description: () => {
+			'showTrayIcon': { value: platform !== 'linux', type: Setting.TYPE_BOOL, section:'application', public: true, appTypes: ['desktop'], label: () => _('Show tray icon'), description: () => {
 				return platform === 'linux' ? _('Note: Does not work in all desktop environments.') : _('This will allow Joplin to run in the background. It is recommended to enable this setting so that your notes are constantly being synchronised, thus reducing the number of conflicts.');
 			}},
 
-			'startMinimized': { value: false, type: Setting.TYPE_BOOL, public: true, appTypes: ['desktop'], label: () => _('Start application minimised in the tray icon') },
+			'startMinimized': { value: false, type: Setting.TYPE_BOOL, section:'application', public: true, appTypes: ['desktop'], label: () => _('Start application minimised in the tray icon') },
 
 			'collapsedFolderIds': { value: [], type: Setting.TYPE_ARRAY, public: false },
-			
+
 			'db.ftsEnabled': { value: -1, type: Setting.TYPE_INT, public: false },
 			'encryption.enabled': { value: false, type: Setting.TYPE_BOOL, public: false },
 			'encryption.activeMasterKeyId': { value: '', type: Setting.TYPE_STRING, public: false },
 			'encryption.passwordCache': { value: {}, type: Setting.TYPE_OBJECT, public: false, secure: true },
-			'style.zoom': {value: 100, type: Setting.TYPE_INT, public: true, appTypes: ['desktop'], label: () => _('Global zoom percentage'), minimum: 50, maximum: 500, step: 10},
-			'style.editor.fontSize': {value: 12, type: Setting.TYPE_INT, public: true, appTypes: ['desktop'], label: () => _('Editor font size'), minimum: 4, maximum: 50, step: 1},
-			'style.editor.fontFamily': {value: "", type: Setting.TYPE_STRING, public: true, appTypes: ['desktop'], label: () => _('Editor font family'), description: () => _('This must be *monospace* font or it will not work properly. If the font is incorrect or empty, it will default to a generic monospace font.')},
-			'autoUpdateEnabled': { value: true, type: Setting.TYPE_BOOL, public: true, appTypes: ['desktop'], label: () => _('Automatically update the application') },
+			'style.zoom': {value: 100, type: Setting.TYPE_INT, public: true, appTypes: ['desktop'], section: 'appearance', label: () => _('Global zoom percentage'), minimum: 50, maximum: 500, step: 10},
+			'style.editor.fontSize': {value: 13, type: Setting.TYPE_INT, public: true, appTypes: ['desktop'], section: 'appearance', label: () => _('Editor font size'), minimum: 4, maximum: 50, step: 1},
+			'style.editor.fontFamily': {value: "", type: Setting.TYPE_STRING, public: true, appTypes: ['desktop'], section: 'appearance', label: () => _('Editor font family'), description: () => _('This must be *monospace* font or it will not work properly. If the font is incorrect or empty, it will default to a generic monospace font.')},
+			'style.sidebar.width': {value: 150, minimum: 80, maximum: 400, type: Setting.TYPE_INT, public: false, appTypes: ['desktop'] },
+			'style.noteList.width': {value: 150, minimum: 80, maximum: 400, type: Setting.TYPE_INT, public: false, appTypes: ['desktop'] },
+			'autoUpdateEnabled': { value: true, type: Setting.TYPE_BOOL, section:'application', public: true, appTypes: ['desktop'], label: () => _('Automatically update the application') },
+			'autoUpdate.includePreReleases': { value: false, type: Setting.TYPE_BOOL, section:'application', public: true, appTypes: ['desktop'], label: () => _('Get pre-releases when checking for updates'), description: () => _('See the pre-release page for more details: %s', 'https://joplinapp.org/prereleases') },
 			'clipperServer.autoStart': { value: false, type: Setting.TYPE_BOOL, public: false },
-			'sync.interval': { value: 300, type: Setting.TYPE_INT, isEnum: true, public: true, label: () => _('Synchronisation interval'), options: () => {
+			'sync.interval': { value: 300, type: Setting.TYPE_INT, section:'sync', isEnum: true, public: true, label: () => _('Synchronisation interval'), options: () => {
 				return {
 					0: _('Disabled'),
 					300: _('%d minutes', 5),
@@ -119,13 +147,15 @@ class Setting extends BaseModel {
 			}},
 			'noteVisiblePanes': { value: ['editor', 'viewer'], type: Setting.TYPE_ARRAY, public: false, appTypes: ['desktop'] },
 			'sidebarVisibility': { value: true, type: Setting.TYPE_BOOL, public: false, appTypes: ['desktop'] },
-			'editor': { value: '', type: Setting.TYPE_STRING, public: true, appTypes: ['cli', 'desktop'], label: () => _('Text editor command'), description: () => _('The editor command (may include arguments) that will be used to open a note. If none is provided it will try to auto-detect the default editor.') },
+			'tagHeaderIsExpanded': { value: true, type: Setting.TYPE_BOOL, public: false, appTypes: ['desktop'] },
+			'folderHeaderIsExpanded': { value: true, type: Setting.TYPE_BOOL, public: false, appTypes: ['desktop'] },
+			'editor': { value: '', type: Setting.TYPE_STRING, subType: 'file_path_and_args', public: true, appTypes: ['cli', 'desktop'], label: () => _('Text editor command'), description: () => _('The editor command (may include arguments) that will be used to open a note. If none is provided it will try to auto-detect the default editor.') },
 			'showAdvancedOptions': { value: false, type: Setting.TYPE_BOOL, public: true, appTypes: ['mobile' ], label: () => _('Show advanced options') },
-			'sync.target': { value: SyncTargetRegistry.nameToId('dropbox'), type: Setting.TYPE_INT, isEnum: true, public: true, label: () => _('Synchronisation target'), description: (appType) => { return appType !== 'cli' ? null : _('The target to synchonise to. Each sync target may have additional parameters which are named as `sync.NUM.NAME` (all documented below).') }, options: () => {
+			'sync.target': { value: SyncTargetRegistry.nameToId('dropbox'), type: Setting.TYPE_INT, isEnum: true, public: true, section:'sync', label: () => _('Synchronisation target'), description: (appType) => { return appType !== 'cli' ? null : _('The target to synchonise to. Each sync target may have additional parameters which are named as `sync.NUM.NAME` (all documented below).') }, options: () => {
 				return SyncTargetRegistry.idAndLabelPlainObject();
 			}},
 
-			'sync.2.path': { value: '', type: Setting.TYPE_STRING, show: (settings) => {
+			'sync.2.path': { value: '', type: Setting.TYPE_STRING, section:'sync', show: (settings) => {
 				try {
 					return settings['sync.target'] == SyncTargetRegistry.nameToId('filesystem')
 				} catch (error) {
@@ -133,15 +163,15 @@ class Setting extends BaseModel {
 				}
 			}, filter: (value) => {
 				return value ? rtrimSlashes(value) : '';
-			}, public: true, label: () => _('Directory to synchronise with (absolute path)'), description: (appType) => { return appType !== 'cli' ? null : _('The path to synchronise with when file system synchronisation is enabled. See `sync.target`.'); } },
+			}, public: true, label: () => _('Directory to synchronise with (absolute path)'), description: () => emptyDirWarning },
 
-			'sync.5.path': { value: '', type: Setting.TYPE_STRING, show: (settings) => { return settings['sync.target'] == SyncTargetRegistry.nameToId('nextcloud') }, public: true, label: () => _('Nextcloud WebDAV URL'), description: () => _('Attention: If you change this location, make sure you copy all your content to it before syncing, otherwise all files will be removed! See the FAQ for more details: %s', 'https://joplin.cozic.net/faq/') },
-			'sync.5.username': { value: '', type: Setting.TYPE_STRING, show: (settings) => { return settings['sync.target'] == SyncTargetRegistry.nameToId('nextcloud') }, public: true, label: () => _('Nextcloud username') },
-			'sync.5.password': { value: '', type: Setting.TYPE_STRING, show: (settings) => { return settings['sync.target'] == SyncTargetRegistry.nameToId('nextcloud') }, public: true, label: () => _('Nextcloud password'), secure: true },
+			'sync.5.path': { value: '', type: Setting.TYPE_STRING, section:'sync', show: (settings) => { return settings['sync.target'] == SyncTargetRegistry.nameToId('nextcloud') }, public: true, label: () => _('Nextcloud WebDAV URL'), description: () => emptyDirWarning },
+			'sync.5.username': { value: '', type: Setting.TYPE_STRING, section:'sync', show: (settings) => { return settings['sync.target'] == SyncTargetRegistry.nameToId('nextcloud') }, public: true, label: () => _('Nextcloud username') },
+			'sync.5.password': { value: '', type: Setting.TYPE_STRING, section:'sync', show: (settings) => { return settings['sync.target'] == SyncTargetRegistry.nameToId('nextcloud') }, public: true, label: () => _('Nextcloud password'), secure: true },
 
-			'sync.6.path': { value: '', type: Setting.TYPE_STRING, show: (settings) => { return settings['sync.target'] == SyncTargetRegistry.nameToId('webdav') }, public: true, label: () => _('WebDAV URL'), description: () => _('Attention: If you change this location, make sure you copy all your content to it before syncing, otherwise all files will be removed! See the FAQ for more details: %s', 'https://joplin.cozic.net/faq/') },
-			'sync.6.username': { value: '', type: Setting.TYPE_STRING, show: (settings) => { return settings['sync.target'] == SyncTargetRegistry.nameToId('webdav') }, public: true, label: () => _('WebDAV username') },
-			'sync.6.password': { value: '', type: Setting.TYPE_STRING, show: (settings) => { return settings['sync.target'] == SyncTargetRegistry.nameToId('webdav') }, public: true, label: () => _('WebDAV password'), secure: true },
+			'sync.6.path': { value: '', type: Setting.TYPE_STRING, section:'sync', show: (settings) => { return settings['sync.target'] == SyncTargetRegistry.nameToId('webdav') }, public: true, label: () => _('WebDAV URL'), description: () => emptyDirWarning },
+			'sync.6.username': { value: '', type: Setting.TYPE_STRING, section:'sync', show: (settings) => { return settings['sync.target'] == SyncTargetRegistry.nameToId('webdav') }, public: true, label: () => _('WebDAV username') },
+			'sync.6.password': { value: '', type: Setting.TYPE_STRING, section:'sync', show: (settings) => { return settings['sync.target'] == SyncTargetRegistry.nameToId('webdav') }, public: true, label: () => _('WebDAV password'), secure: true },
 
 			'sync.3.auth': { value: '', type: Setting.TYPE_STRING, public: false },
 			'sync.4.auth': { value: '', type: Setting.TYPE_STRING, public: false },
@@ -154,13 +184,15 @@ class Setting extends BaseModel {
 			'sync.6.context': { value: '', type: Setting.TYPE_STRING, public: false },
 			'sync.7.context': { value: '', type: Setting.TYPE_STRING, public: false },
 
-			'net.customCertificates': { value: '', type: Setting.TYPE_STRING, show: (settings) => { return [SyncTargetRegistry.nameToId('nextcloud'), SyncTargetRegistry.nameToId('webdav')].indexOf(settings['sync.target']) >= 0 }, public: true, appTypes: ['desktop', 'cli'], label: () => _('Custom TLS certificates'), description: () => _('Comma-separated list of paths to directories to load the certificates from, or path to individual cert files. For example: /my/cert_dir, /other/custom.pem. Note that if you make changes to the TLS settings, you must save your changes before clicking on "Check synchronisation configuration".') },
-			'net.ignoreTlsErrors': { value: false, type: Setting.TYPE_BOOL, show: (settings) => { return [SyncTargetRegistry.nameToId('nextcloud'), SyncTargetRegistry.nameToId('webdav')].indexOf(settings['sync.target']) >= 0 }, public: true, appTypes: ['desktop', 'cli'], label: () => _('Ignore TLS certificate errors') },
-		
+			'net.customCertificates': { value: '', type: Setting.TYPE_STRING, section:'sync', show: (settings) => { return [SyncTargetRegistry.nameToId('nextcloud'), SyncTargetRegistry.nameToId('webdav')].indexOf(settings['sync.target']) >= 0 }, public: true, appTypes: ['desktop', 'cli'], label: () => _('Custom TLS certificates'), description: () => _('Comma-separated list of paths to directories to load the certificates from, or path to individual cert files. For example: /my/cert_dir, /other/custom.pem. Note that if you make changes to the TLS settings, you must save your changes before clicking on "Check synchronisation configuration".') },
+			'net.ignoreTlsErrors': { value: false, type: Setting.TYPE_BOOL, section:'sync', show: (settings) => { return [SyncTargetRegistry.nameToId('nextcloud'), SyncTargetRegistry.nameToId('webdav')].indexOf(settings['sync.target']) >= 0 }, public: true, appTypes: ['desktop', 'cli'], label: () => _('Ignore TLS certificate errors') },
+
 			'api.token': { value: null, type: Setting.TYPE_STRING, public: false },
 
 			'resourceService.lastProcessedChangeId': { value: 0, type: Setting.TYPE_INT, public: false },
 			'searchEngine.lastProcessedChangeId': { value: 0, type: Setting.TYPE_INT, public: false },
+			'searchEngine.initialIndexingDone': { value: false, type: Setting.TYPE_BOOL, public: false },
+			'welcome.wasBuilt': { value: false, type: Setting.TYPE_BOOL, public: false },
 		};
 
 		return this.metadata_;
@@ -274,6 +306,9 @@ class Setting extends BaseModel {
 
 				// Don't log this to prevent sensitive info (passwords, auth tokens...) to end up in logs
 				// this.logger().info('Setting: ' + key + ' = ' + c.value + ' => ' + value);
+
+				if (('minimum' in md) && value < md.minimum) value = md.minimum;
+				if (('maximum' in md) && value > md.maximum) value = md.maximum;
 
 				c.value = value;
 
@@ -521,6 +556,43 @@ class Setting extends BaseModel {
 		if (typeId === Setting.TYPE_BOOL) return 'bool';
 		if (typeId === Setting.TYPE_ARRAY) return 'array';
 		if (typeId === Setting.TYPE_OBJECT) return 'object';
+	}
+
+	static groupMetadatasBySections(metadatas) {
+		let sections = [];
+		const generalSection = { name: 'general', metadatas: [] };
+		const nameToSections = {};
+		nameToSections['general'] = generalSection;
+		sections.push(generalSection);
+		for (let i = 0; i < metadatas.length; i++) {
+			const md = metadatas[i];
+			if (!md.section) {
+				generalSection.metadatas.push(md);
+			} else {
+				if (!nameToSections[md.section]) {
+					nameToSections[md.section] = { name: md.section, metadatas: [] };
+					sections.push(nameToSections[md.section]);
+				}
+				nameToSections[md.section].metadatas.push(md);
+			}
+		}
+		return sections;		
+	}
+
+	static sectionNameToLabel(name) {
+		if (name === 'general') return _('General');
+		if (name === 'sync') return _('Synchronisation');
+		if (name === 'appearance') return _('Appearance');
+		if (name === 'note') return _('Note');
+		if (name === 'plugins') return _('Plugins');
+		if (name === 'application') return _('Application');
+		return name;
+	}
+
+	static appTypeToLabel(name) {
+		// Not translated for now because only used on Welcome notes (which are not translated)
+		if (name === 'cli') return 'CLI';
+		return name[0].toUpperCase() + name.substr(1).toLowerCase();
 	}
 
 }

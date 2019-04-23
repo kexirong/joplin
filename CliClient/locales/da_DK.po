@@ -123,9 +123,10 @@ msgstr "Markerer en opgave som udført."
 msgid "Note is not a to-do: \"%s\""
 msgstr "Noten er ikke en opgave: \"%s\""
 
+#, fuzzy
 msgid ""
 "Manages E2EE configuration. Commands are `enable`, `disable`, `decrypt`, "
-"`status` and `target-status`."
+"`status`, `decrypt-file` and `target-status`."
 msgstr ""
 "Udfører E2EE konfiguration. Kommandoer er `enable`(aktiver), "
 "`disable`(sluk), `decrypt`(dekrypter), `status` og `target-status` (modtager-"
@@ -576,6 +577,20 @@ msgstr ""
 msgid "Exporting to \"%s\" as \"%s\" format. Please wait..."
 msgstr "Eksporterer til \"%s\" som \"%s\"-format. Vent venligst..."
 
+msgid "Sidebar"
+msgstr ""
+
+msgid "Note list"
+msgstr ""
+
+#, fuzzy
+msgid "Note title"
+msgstr "Notesbogs titel:"
+
+#, fuzzy
+msgid "Note body"
+msgstr "Notesbøger"
+
 #, javascript-format
 msgid "Importing from \"%s\" as \"%s\" format. Please wait..."
 msgstr "Importerer fra \"%s\" som \"%s\"-format. Vent venligst..."
@@ -583,8 +598,8 @@ msgstr "Importerer fra \"%s\" som \"%s\"-format. Vent venligst..."
 msgid "PDF File"
 msgstr "PDF fil"
 
-msgid "File"
-msgstr "Fil"
+msgid "Synchronisation status"
+msgstr "Synkroniserings status"
 
 msgid "New note"
 msgstr "Ny note"
@@ -595,14 +610,43 @@ msgstr "Ny opgave"
 msgid "New notebook"
 msgstr "Ny notesbog"
 
+msgid "Print"
+msgstr "Udskriv"
+
+msgid "General Options"
+msgstr "Generelle indstillinger"
+
+msgid "Encryption options"
+msgstr "Krypterings muligheder"
+
+msgid "Web clipper options"
+msgstr ""
+
+#, javascript-format
+msgid "%s %s (%s, %s)"
+msgstr "%s %s (%s, %s)"
+
+#, fuzzy
+msgid "&File"
+msgstr "Fil"
+
+msgid "About Joplin"
+msgstr "Om Joplin"
+
+msgid "Preferences..."
+msgstr ""
+
+msgid "Check for updates..."
+msgstr "Checker om der er opdateringer.."
+
 msgid "Import"
 msgstr "Importer"
 
 msgid "Export"
 msgstr "Eksporter"
 
-msgid "Print"
-msgstr "Udskriv"
+msgid "Synchronise"
+msgstr "Synkroniser"
 
 #, javascript-format
 msgid "Hide %s"
@@ -611,7 +655,8 @@ msgstr "Skjul %s"
 msgid "Quit"
 msgstr "Afslut"
 
-msgid "Edit"
+#, fuzzy
+msgid "&Edit"
 msgstr "Ret"
 
 msgid "Copy"
@@ -633,6 +678,9 @@ msgstr ""
 msgid "Italic"
 msgstr ""
 
+msgid "Link"
+msgstr ""
+
 msgid "Insert Date Time"
 msgstr ""
 
@@ -646,7 +694,8 @@ msgstr "Søg i alle noter"
 msgid "Search in current note"
 msgstr "Søg i alle noter"
 
-msgid "View"
+#, fuzzy
+msgid "&View"
 msgstr "Vis"
 
 msgid "Toggle sidebar"
@@ -655,22 +704,16 @@ msgstr ""
 msgid "Toggle editor layout"
 msgstr "Skift editor layout"
 
-msgid "Tools"
+#, fuzzy
+msgid "Focus"
+msgstr "Fokuser på brødtekst"
+
+#, fuzzy
+msgid "&Tools"
 msgstr "Værktøjer"
 
-msgid "Synchronisation status"
-msgstr "Synkroniserings status"
-
-msgid "Web clipper options"
-msgstr ""
-
-msgid "Encryption options"
-msgstr "Krypterings muligheder"
-
-msgid "General Options"
-msgstr "Generelle indstillinger"
-
-msgid "Help"
+#, fuzzy
+msgid "&Help"
 msgstr "Hjælp"
 
 msgid "Website and documentation"
@@ -678,16 +721,6 @@ msgstr "Joplins hjemmeside og dokumentation"
 
 msgid "Make a donation"
 msgstr "Giv en donation"
-
-msgid "Check for updates..."
-msgstr "Checker om der er opdateringer.."
-
-msgid "About Joplin"
-msgstr "Om Joplin"
-
-#, javascript-format
-msgid "%s %s (%s, %s)"
-msgstr "%s %s (%s, %s)"
 
 #, javascript-format
 msgid "Open %s"
@@ -705,8 +738,20 @@ msgstr "Fortryd"
 msgid "Current version is up-to-date."
 msgstr "Aktuel version er nyeste."
 
+#, javascript-format
+msgid "%s (pre-release)"
+msgstr ""
+
 msgid "An update is available, do you want to download it now?"
 msgstr "Opdatering er til rådighed, vil du hente den nu?"
+
+#, javascript-format
+msgid "Your version: %s"
+msgstr ""
+
+#, javascript-format
+msgid "New version: %s"
+msgstr ""
 
 msgid "Yes"
 msgstr "Ja"
@@ -775,12 +820,15 @@ msgid ""
 "access Joplin."
 msgstr ""
 
-msgid "Check synchronisation configuration"
-msgstr "Check synkroniserings Indstillinger"
-
 #, javascript-format
 msgid "Notes and settings are stored in: %s"
 msgstr "Noter og indstillinger er gemt i: %s"
+
+msgid "Browse..."
+msgstr ""
+
+msgid "Check synchronisation configuration"
+msgstr "Check synkroniserings Indstillinger"
 
 msgid "Apply"
 msgstr ""
@@ -875,6 +923,10 @@ msgstr "Status"
 msgid "Encryption is:"
 msgstr "Kryptering er:"
 
+#, fuzzy
+msgid "Usage"
+msgstr "Forbrug: %s"
+
 msgid "Back"
 msgstr "Tilbage"
 
@@ -927,37 +979,6 @@ msgstr "Nogle emner kan ikke krypteres."
 msgid "Set the password"
 msgstr "Indstil kodeord"
 
-msgid "Add or remove tags"
-msgstr "Tilføj eller slet mærker"
-
-msgid "Duplicate"
-msgstr ""
-
-#, fuzzy, javascript-format
-msgid "%s - Copy"
-msgstr "Kopier"
-
-msgid "Switch between note and to-do type"
-msgstr "Skift mellem note-  og opgave type"
-
-#, fuzzy
-msgid "Switch to note type"
-msgstr "Skift mellem note-  og opgave type"
-
-#, fuzzy
-msgid "Switch to to-do type"
-msgstr "Skift mellem note-  og opgave type"
-
-#, fuzzy
-msgid "Copy Markdown link"
-msgstr "Markdown"
-
-msgid "Delete"
-msgstr "Slet"
-
-msgid "Delete notes?"
-msgstr "Slet noter?"
-
 msgid "No notes in here. Create one by clicking on \"New note\"."
 msgstr "Der er ingen noter her. Opret en ved at klikke på \"Ny note\"."
 
@@ -1002,6 +1023,9 @@ msgid ""
 "This note has no content. Click on \"%s\" to toggle the editor and edit the "
 "note."
 msgstr "Denne note er tom. Klik på \"%s\" for at starte editor og rette noten."
+
+msgid "Only one note can be printed or exported to PDF at a time."
+msgstr ""
 
 msgid "strong text"
 msgstr ""
@@ -1091,17 +1115,25 @@ msgstr "Krypterings indstillinger"
 msgid "Clipper Options"
 msgstr "Generelle indstillinger"
 
-msgid "Remove this tag from all the notes?"
+#, fuzzy, javascript-format
+msgid ""
+"Delete notebook \"%s\"?\n"
+"\n"
+"All notes and sub-notebooks within this notebook will also be deleted."
+msgstr "Slet notesbog? Alle noter i notesbogen bliver også slettet."
+
+#, fuzzy, javascript-format
+msgid "Remove tag \"%s\" from all notes?"
 msgstr "Slet denne markering fra alle noter?"
 
 msgid "Remove this search from the sidebar?"
 msgstr "Slet denne søgning fra sidebjælke?"
 
+msgid "Delete"
+msgstr "Slet"
+
 msgid "Rename"
 msgstr "Omdøb"
-
-msgid "Synchronise"
-msgstr "Synkroniser"
 
 msgid "Notebooks"
 msgstr "Notesbøger"
@@ -1116,6 +1148,48 @@ msgstr "Ressourcer: %d."
 
 msgid "Please select where the sync status should be exported to"
 msgstr "Vælg hvor sync status skal eksporteres til"
+
+msgid "Add or remove tags"
+msgstr "Tilføj eller slet mærker"
+
+#, fuzzy
+msgid "Duplicate"
+msgstr "Forlad/luk program."
+
+#, fuzzy, javascript-format
+msgid "%s - Copy"
+msgstr "Kopier"
+
+msgid "Switch between note and to-do type"
+msgstr "Skift mellem note-  og opgave type"
+
+#, fuzzy
+msgid "Switch to note type"
+msgstr "Skift mellem note-  og opgave type"
+
+#, fuzzy
+msgid "Switch to to-do type"
+msgstr "Skift mellem note-  og opgave type"
+
+#, fuzzy
+msgid "Copy Markdown link"
+msgstr "Markdown"
+
+#, fuzzy, javascript-format
+msgid "Delete note \"%s\"?"
+msgstr "Slet noter?"
+
+#, fuzzy, javascript-format
+msgid "Delete these %d notes?"
+msgstr "Slet disse noter?"
+
+msgid ""
+"Type a note title to jump to it. Or type # followed by a tag name, or @ "
+"followed by a notebook name."
+msgstr ""
+
+msgid "Goto Anything..."
+msgstr ""
 
 #, javascript-format
 msgid "Usage: %s"
@@ -1235,6 +1309,14 @@ msgstr "Krypteret"
 msgid "Encrypted items cannot be modified"
 msgstr "Krypteret emner kan ikke rettes"
 
+#, fuzzy
+msgid "title"
+msgstr "Samlet"
+
+#, fuzzy
+msgid "updated date"
+msgstr "Opdateret %d."
+
 msgid "Conflicts"
 msgstr "Konflikter"
 
@@ -1245,14 +1327,6 @@ msgstr "Kan ikke flytte note til \"%s\" notesbog"
 #, javascript-format
 msgid "Notebooks cannot be named \"%s\", which is a reserved title."
 msgstr "Notesbøger kan ikke få navnet \"%s\", da det er en beskyttet titel."
-
-#, fuzzy
-msgid "title"
-msgstr "Samlet"
-
-#, fuzzy
-msgid "updated date"
-msgstr "Opdateret %d."
 
 #, fuzzy
 msgid "created date"
@@ -1268,6 +1342,13 @@ msgstr "Kan ikke kopiere note til \"%s\" notesbog"
 #, javascript-format
 msgid "Cannot move note to \"%s\" notebook"
 msgstr "Kan ikke flytte note til \"%s\" notesbog"
+
+#, javascript-format
+msgid ""
+"Attention: If you change this location, make sure you copy all your content "
+"to it before syncing, otherwise all files will be removed! See the FAQ for "
+"more details: %s"
+msgstr ""
 
 msgid "Language"
 msgstr "Sprog"
@@ -1300,6 +1381,10 @@ msgstr "Sorter noter efter"
 msgid "Reverse sort order"
 msgstr "Modsat sorterings orden"
 
+#, fuzzy
+msgid "Sort notebooks by"
+msgstr "Sorter noter efter"
+
 msgid "Save geo-location with notes"
 msgstr "Gem geo-lokation i noter"
 
@@ -1314,6 +1399,43 @@ msgstr "Fokuser på brødtekst"
 
 msgid "When creating a new note:"
 msgstr "Ved oprettelse af ny note:"
+
+msgid "Enable soft breaks"
+msgstr ""
+
+#, fuzzy
+msgid "Enable math expressions"
+msgstr "Start kryptering"
+
+msgid "Enable ==mark== syntax"
+msgstr ""
+
+msgid "Enable footnotes"
+msgstr ""
+
+msgid "Enable table of contents extension"
+msgstr ""
+
+msgid "Enable ~sub~ syntax"
+msgstr ""
+
+msgid "Enable ^sup^ syntax"
+msgstr ""
+
+msgid "Enable deflist syntax"
+msgstr ""
+
+msgid "Enable abbreviation syntax"
+msgstr ""
+
+msgid "Enable markdown emoji"
+msgstr ""
+
+msgid "Enable ++insert++ syntax"
+msgstr ""
+
+msgid "Enable multimarkdown table extension"
+msgstr ""
 
 msgid "Show tray icon"
 msgstr "Vis ikon på bundbjælke"
@@ -1350,6 +1472,13 @@ msgstr ""
 
 msgid "Automatically update the application"
 msgstr "Automatisk app update"
+
+msgid "Get pre-releases when checking for updates"
+msgstr ""
+
+#, javascript-format
+msgid "See the pre-release page for more details: %s"
+msgstr ""
 
 msgid "Synchronisation interval"
 msgstr "Synkroniserings interval"
@@ -1394,22 +1523,8 @@ msgstr ""
 msgid "Directory to synchronise with (absolute path)"
 msgstr "Mappe der skal synkroniseres med (absolut sti)"
 
-msgid ""
-"The path to synchronise with when file system synchronisation is enabled. "
-"See `sync.target`."
-msgstr ""
-"Sti til synkronisering, når filsystem synkronisering er slået til. Se `sync."
-"target`."
-
 msgid "Nextcloud WebDAV URL"
 msgstr "Nextcloud WebDAV URL"
-
-#, javascript-format
-msgid ""
-"Attention: If you change this location, make sure you copy all your content "
-"to it before syncing, otherwise all files will be removed! See the FAQ for "
-"more details: %s"
-msgstr ""
 
 msgid "Nextcloud username"
 msgstr "Nextcloud brugernavn"
@@ -1443,6 +1558,28 @@ msgstr ""
 msgid "Invalid option value: \"%s\". Possible values are: %s."
 msgstr "Ulovlig værdi: \"%s\".  Mulige valg er: %s."
 
+#, fuzzy
+msgid "General"
+msgstr "Generelle indstillinger"
+
+#, fuzzy
+msgid "Synchronisation"
+msgstr "Synkroniserings status"
+
+msgid "Appearance"
+msgstr ""
+
+#, fuzzy
+msgid "Note"
+msgstr "Notesbøger"
+
+msgid "Plugins"
+msgstr ""
+
+#, fuzzy
+msgid "Application"
+msgstr "Forlad/luk program."
+
 #, javascript-format
 msgid "The tag \"%s\" already exists. Please choose a different name."
 msgstr ""
@@ -1462,6 +1599,9 @@ msgstr "Evernote eksport fil"
 #, fuzzy
 msgid "Json Export Directory"
 msgstr "Joplin eksport mappe"
+
+msgid "File"
+msgstr "Fil"
 
 msgid "Directory"
 msgstr "Indeks"
@@ -1643,9 +1783,20 @@ msgstr ""
 msgid "Joplin website"
 msgstr "Joplin hjemmeside"
 
+#, javascript-format
+msgid "Database v%s"
+msgstr ""
+
+#, fuzzy, javascript-format
+msgid "FTS enabled: %d"
+msgstr "Til sletning: %d"
+
 #, fuzzy
 msgid "Login with Dropbox"
 msgstr "Log på med OneDrive"
+
+msgid "Enter code here"
+msgstr ""
 
 #, javascript-format
 msgid "Master Key %s"
@@ -1729,6 +1880,9 @@ msgstr "Vis på kort"
 msgid "Go to source URL"
 msgstr ""
 
+msgid "Edit"
+msgstr "Ret"
+
 msgid "Delete notebook"
 msgstr "Slet notesbog"
 
@@ -1750,6 +1904,21 @@ msgstr "Du har ingen notesbøger. Opret en ved at klikke på (+) knappen."
 
 msgid "Welcome"
 msgstr "Velkommen"
+
+#, fuzzy
+#~ msgid "This note has no history"
+#~ msgstr "Denne note er ændret:"
+
+#~ msgid ""
+#~ "The path to synchronise with when file system synchronisation is enabled. "
+#~ "See `sync.target`."
+#~ msgstr ""
+#~ "Sti til synkronisering, når filsystem synkronisering er slået til. Se "
+#~ "`sync.target`."
+
+#, fuzzy
+#~ msgid "Joplin v%s"
+#~ msgstr "Joplin hjemmeside"
 
 #~ msgid "State: %s."
 #~ msgstr "Tilstand: %s."

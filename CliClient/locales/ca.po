@@ -125,9 +125,10 @@ msgstr "Marca un llistat de tasques pendents com a fet."
 msgid "Note is not a to-do: \"%s\""
 msgstr "La nota no és un llistat de tasques pendents: «%s»"
 
+#, fuzzy
 msgid ""
 "Manages E2EE configuration. Commands are `enable`, `disable`, `decrypt`, "
-"`status` and `target-status`."
+"`status`, `decrypt-file` and `target-status`."
 msgstr ""
 "Gestiona la configuració E2EE. Les ordres són «enable», «disable», "
 "«decrypt», «status» i «target-status»"
@@ -589,6 +590,20 @@ msgstr ""
 msgid "Exporting to \"%s\" as \"%s\" format. Please wait..."
 msgstr "S'està exportant a «%s» com a format «%s». Espereu..."
 
+msgid "Sidebar"
+msgstr ""
+
+msgid "Note list"
+msgstr ""
+
+#, fuzzy
+msgid "Note title"
+msgstr "Títol del bloc de notes:"
+
+#, fuzzy
+msgid "Note body"
+msgstr "Blocs de notes"
+
 #, javascript-format
 msgid "Importing from \"%s\" as \"%s\" format. Please wait..."
 msgstr "S'està important des de «%s» com a format «%s». Espereu..."
@@ -596,8 +611,8 @@ msgstr "S'està important des de «%s» com a format «%s». Espereu..."
 msgid "PDF File"
 msgstr "Fitxer PDF"
 
-msgid "File"
-msgstr "Fitxer"
+msgid "Synchronisation status"
+msgstr "Estat de la sincronització"
 
 msgid "New note"
 msgstr "Nota nova"
@@ -608,14 +623,43 @@ msgstr "Llistat de tasques pendents nou"
 msgid "New notebook"
 msgstr "Bloc de notes nou"
 
+msgid "Print"
+msgstr "Imprimeix"
+
+msgid "General Options"
+msgstr "Opcions generals"
+
+msgid "Encryption options"
+msgstr "Opcions del xifratge"
+
+msgid "Web clipper options"
+msgstr "Opcions del desa-retalls de webs"
+
+#, javascript-format
+msgid "%s %s (%s, %s)"
+msgstr "%s %s (%s, %s)"
+
+#, fuzzy
+msgid "&File"
+msgstr "Fitxer"
+
+msgid "About Joplin"
+msgstr "Quant al Joplin"
+
+msgid "Preferences..."
+msgstr ""
+
+msgid "Check for updates..."
+msgstr "Comprova les actualitzacions..."
+
 msgid "Import"
 msgstr "Importació"
 
 msgid "Export"
 msgstr "Exportació"
 
-msgid "Print"
-msgstr "Imprimeix"
+msgid "Synchronise"
+msgstr "Sincronitza"
 
 #, javascript-format
 msgid "Hide %s"
@@ -624,7 +668,8 @@ msgstr "Amaga %s"
 msgid "Quit"
 msgstr "Surt"
 
-msgid "Edit"
+#, fuzzy
+msgid "&Edit"
 msgstr "Edita"
 
 msgid "Copy"
@@ -646,6 +691,9 @@ msgstr ""
 msgid "Italic"
 msgstr ""
 
+msgid "Link"
+msgstr ""
+
 msgid "Insert Date Time"
 msgstr ""
 
@@ -659,7 +707,8 @@ msgstr "Cerca a totes les notes"
 msgid "Search in current note"
 msgstr "Cerca a totes les notes"
 
-msgid "View"
+#, fuzzy
+msgid "&View"
 msgstr "Visualització"
 
 msgid "Toggle sidebar"
@@ -668,22 +717,16 @@ msgstr "Mostra o amaga la barra lateral"
 msgid "Toggle editor layout"
 msgstr "Canvia el disseny de l'editor"
 
-msgid "Tools"
+#, fuzzy
+msgid "Focus"
+msgstr "Vés al cos"
+
+#, fuzzy
+msgid "&Tools"
 msgstr "Eines"
 
-msgid "Synchronisation status"
-msgstr "Estat de la sincronització"
-
-msgid "Web clipper options"
-msgstr "Opcions del desa-retalls de webs"
-
-msgid "Encryption options"
-msgstr "Opcions del xifratge"
-
-msgid "General Options"
-msgstr "Opcions generals"
-
-msgid "Help"
+#, fuzzy
+msgid "&Help"
 msgstr "Ajuda"
 
 msgid "Website and documentation"
@@ -691,16 +734,6 @@ msgstr "Lloc web i documentació"
 
 msgid "Make a donation"
 msgstr "Donatius"
-
-msgid "Check for updates..."
-msgstr "Comprova les actualitzacions..."
-
-msgid "About Joplin"
-msgstr "Quant al Joplin"
-
-#, javascript-format
-msgid "%s %s (%s, %s)"
-msgstr "%s %s (%s, %s)"
 
 #, javascript-format
 msgid "Open %s"
@@ -718,8 +751,20 @@ msgstr "Cancel·la"
 msgid "Current version is up-to-date."
 msgstr "La versió actual està actualitzada"
 
+#, javascript-format
+msgid "%s (pre-release)"
+msgstr ""
+
 msgid "An update is available, do you want to download it now?"
 msgstr "Hi ha disponible una actualització. Voleu baixar-la ara?"
+
+#, javascript-format
+msgid "Your version: %s"
+msgstr ""
+
+#, javascript-format
+msgid "New version: %s"
+msgstr ""
 
 msgid "Yes"
 msgstr "Sí"
@@ -795,12 +840,15 @@ msgid ""
 "access Joplin."
 msgstr ""
 
-msgid "Check synchronisation configuration"
-msgstr "Comprova la configuració de la sincronització"
-
 #, javascript-format
 msgid "Notes and settings are stored in: %s"
 msgstr "Les notes i la configuració es desen a: %s"
+
+msgid "Browse..."
+msgstr ""
+
+msgid "Check synchronisation configuration"
+msgstr "Comprova la configuració de la sincronització"
 
 msgid "Apply"
 msgstr ""
@@ -896,6 +944,10 @@ msgstr "Estat"
 msgid "Encryption is:"
 msgstr "El xifratge és:"
 
+#, fuzzy
+msgid "Usage"
+msgstr "Ús: %s"
+
 msgid "Back"
 msgstr "Enrere"
 
@@ -946,36 +998,6 @@ msgstr "Alguns elements no s'han pogut desxifrar."
 msgid "Set the password"
 msgstr "Establiu la contrasenya"
 
-msgid "Add or remove tags"
-msgstr "Afegeix o suprimeix etiquetes"
-
-msgid "Duplicate"
-msgstr ""
-
-#, fuzzy, javascript-format
-msgid "%s - Copy"
-msgstr "Copia"
-
-msgid "Switch between note and to-do type"
-msgstr "Alterna entre el tipus nota i tasques pendents"
-
-#, fuzzy
-msgid "Switch to note type"
-msgstr "Alterna entre el tipus nota i tasques pendents"
-
-#, fuzzy
-msgid "Switch to to-do type"
-msgstr "Alterna entre el tipus nota i tasques pendents"
-
-msgid "Copy Markdown link"
-msgstr "Copia l'enllaç Markdown"
-
-msgid "Delete"
-msgstr "Suprimeix"
-
-msgid "Delete notes?"
-msgstr "Voleu suprimir les notes?"
-
 msgid "No notes in here. Create one by clicking on \"New note\"."
 msgstr "No hi ha cap nota aquí. Creeu-ne una fent clic a «Nota nova»."
 
@@ -1024,6 +1046,9 @@ msgid ""
 msgstr ""
 "Aquesta nota no té contingut. Feu clic a «%s» per a anar a l'editor i "
 "modificar-la."
+
+msgid "Only one note can be printed or exported to PDF at a time."
+msgstr ""
 
 msgid "strong text"
 msgstr ""
@@ -1112,17 +1137,27 @@ msgstr "Opcions de xifratge"
 msgid "Clipper Options"
 msgstr "Opcions del desa-retalls"
 
-msgid "Remove this tag from all the notes?"
+#, fuzzy, javascript-format
+msgid ""
+"Delete notebook \"%s\"?\n"
+"\n"
+"All notes and sub-notebooks within this notebook will also be deleted."
+msgstr ""
+"Voleu suprimir el bloc de notes? També se suprimiran tots els sub-blocs "
+"d'aquest bloc de notes."
+
+#, fuzzy, javascript-format
+msgid "Remove tag \"%s\" from all notes?"
 msgstr "Voleu suprimir aquesta etiqueta de totes les notes?"
 
 msgid "Remove this search from the sidebar?"
 msgstr "Voleu suprimir aquesta cerca de la barra laterla?"
 
+msgid "Delete"
+msgstr "Suprimeix"
+
 msgid "Rename"
 msgstr "Canvia el nom"
-
-msgid "Synchronise"
-msgstr "Sincronitza"
 
 msgid "Notebooks"
 msgstr "Blocs de notes"
@@ -1137,6 +1172,47 @@ msgstr "Recursos: %d."
 
 msgid "Please select where the sync status should be exported to"
 msgstr "Seleccioneu on s'hauria d'exportar l'estat de la sincronització"
+
+msgid "Add or remove tags"
+msgstr "Afegeix o suprimeix etiquetes"
+
+#, fuzzy
+msgid "Duplicate"
+msgstr "Surt de l'aplicació"
+
+#, fuzzy, javascript-format
+msgid "%s - Copy"
+msgstr "Copia"
+
+msgid "Switch between note and to-do type"
+msgstr "Alterna entre el tipus nota i tasques pendents"
+
+#, fuzzy
+msgid "Switch to note type"
+msgstr "Alterna entre el tipus nota i tasques pendents"
+
+#, fuzzy
+msgid "Switch to to-do type"
+msgstr "Alterna entre el tipus nota i tasques pendents"
+
+msgid "Copy Markdown link"
+msgstr "Copia l'enllaç Markdown"
+
+#, fuzzy, javascript-format
+msgid "Delete note \"%s\"?"
+msgstr "Voleu suprimir les notes?"
+
+#, fuzzy, javascript-format
+msgid "Delete these %d notes?"
+msgstr "Voleu suprimir aquestes notes?"
+
+msgid ""
+"Type a note title to jump to it. Or type # followed by a tag name, or @ "
+"followed by a notebook name."
+msgstr ""
+
+msgid "Goto Anything..."
+msgstr ""
 
 #, javascript-format
 msgid "Usage: %s"
@@ -1256,6 +1332,12 @@ msgstr "Xifrat"
 msgid "Encrypted items cannot be modified"
 msgstr "Els elements xifrats no es poden modificar"
 
+msgid "title"
+msgstr "títol"
+
+msgid "updated date"
+msgstr "data d'actualització"
+
 msgid "Conflicts"
 msgstr "Conflictes"
 
@@ -1265,12 +1347,6 @@ msgstr "No es pot moure el bloc de notes a aquesta ubicació"
 #, javascript-format
 msgid "Notebooks cannot be named \"%s\", which is a reserved title."
 msgstr "Els blocs de notes no poden tenir el nom «%s», és un títol reservat."
-
-msgid "title"
-msgstr "títol"
-
-msgid "updated date"
-msgstr "data d'actualització"
 
 msgid "created date"
 msgstr "data de creació"
@@ -1285,6 +1361,13 @@ msgstr "No es pot copiar la nota al bloc de notes «%s»"
 #, javascript-format
 msgid "Cannot move note to \"%s\" notebook"
 msgstr "No es pot moure la nota al bloc de notes «%s»"
+
+#, javascript-format
+msgid ""
+"Attention: If you change this location, make sure you copy all your content "
+"to it before syncing, otherwise all files will be removed! See the FAQ for "
+"more details: %s"
+msgstr ""
 
 msgid "Language"
 msgstr "Llengua"
@@ -1316,6 +1399,10 @@ msgstr "Ordena les notes per"
 msgid "Reverse sort order"
 msgstr "Ordre invers"
 
+#, fuzzy
+msgid "Sort notebooks by"
+msgstr "Ordena les notes per"
+
 msgid "Save geo-location with notes"
 msgstr "Desa la geolocalització a les notes"
 
@@ -1330,6 +1417,43 @@ msgstr "Vés al cos"
 
 msgid "When creating a new note:"
 msgstr "En crear una nota:"
+
+msgid "Enable soft breaks"
+msgstr ""
+
+#, fuzzy
+msgid "Enable math expressions"
+msgstr "Activa el xifratge"
+
+msgid "Enable ==mark== syntax"
+msgstr ""
+
+msgid "Enable footnotes"
+msgstr ""
+
+msgid "Enable table of contents extension"
+msgstr ""
+
+msgid "Enable ~sub~ syntax"
+msgstr ""
+
+msgid "Enable ^sup^ syntax"
+msgstr ""
+
+msgid "Enable deflist syntax"
+msgstr ""
+
+msgid "Enable abbreviation syntax"
+msgstr ""
+
+msgid "Enable markdown emoji"
+msgstr ""
+
+msgid "Enable ++insert++ syntax"
+msgstr ""
+
+msgid "Enable multimarkdown table extension"
+msgstr ""
 
 msgid "Show tray icon"
 msgstr "Mostra la icona a la safata"
@@ -1366,6 +1490,13 @@ msgstr ""
 
 msgid "Automatically update the application"
 msgstr "Actualitza automàticament l'aplicació"
+
+msgid "Get pre-releases when checking for updates"
+msgstr ""
+
+#, javascript-format
+msgid "See the pre-release page for more details: %s"
+msgstr ""
 
 msgid "Synchronisation interval"
 msgstr "Interval de sincronització"
@@ -1410,22 +1541,8 @@ msgstr ""
 msgid "Directory to synchronise with (absolute path)"
 msgstr "Directori on es farà la sincronització (camí absolut)"
 
-msgid ""
-"The path to synchronise with when file system synchronisation is enabled. "
-"See `sync.target`."
-msgstr ""
-"El camí on sincronitzar en activar la sincronització del sistema. Vegeu "
-"«sync.target»."
-
 msgid "Nextcloud WebDAV URL"
 msgstr "URL del Nextcloud WebDAV"
-
-#, javascript-format
-msgid ""
-"Attention: If you change this location, make sure you copy all your content "
-"to it before syncing, otherwise all files will be removed! See the FAQ for "
-"more details: %s"
-msgstr ""
 
 msgid "Nextcloud username"
 msgstr "Nom d'usuari del Nextcloud"
@@ -1459,6 +1576,28 @@ msgstr ""
 msgid "Invalid option value: \"%s\". Possible values are: %s."
 msgstr "El valor de l'opció no és vàlid: «%s». Els valors possibles són: %s."
 
+#, fuzzy
+msgid "General"
+msgstr "Opcions generals"
+
+#, fuzzy
+msgid "Synchronisation"
+msgstr "Estat de la sincronització"
+
+msgid "Appearance"
+msgstr ""
+
+#, fuzzy
+msgid "Note"
+msgstr "Blocs de notes"
+
+msgid "Plugins"
+msgstr ""
+
+#, fuzzy
+msgid "Application"
+msgstr "Surt de l'aplicació"
+
 #, javascript-format
 msgid "The tag \"%s\" already exists. Please choose a different name."
 msgstr ""
@@ -1478,6 +1617,9 @@ msgstr "Fitxer d'exportació de l'Evernote"
 #, fuzzy
 msgid "Json Export Directory"
 msgstr "Directori d'exportació del Joplin"
+
+msgid "File"
+msgstr "Fitxer"
 
 msgid "Directory"
 msgstr "Directori"
@@ -1665,8 +1807,19 @@ msgstr ""
 msgid "Joplin website"
 msgstr "Lloc web del Joplin"
 
+#, javascript-format
+msgid "Database v%s"
+msgstr ""
+
+#, fuzzy, javascript-format
+msgid "FTS enabled: %d"
+msgstr "Per suprimir: %d"
+
 msgid "Login with Dropbox"
 msgstr "Inicia sessió amb Dropbox"
+
+msgid "Enter code here"
+msgstr ""
 
 #, javascript-format
 msgid "Master Key %s"
@@ -1751,6 +1904,9 @@ msgstr "Mostra-ho al mapa"
 msgid "Go to source URL"
 msgstr ""
 
+msgid "Edit"
+msgstr "Edita"
+
 msgid "Delete notebook"
 msgstr "Suprimeix el bloc de notes"
 
@@ -1773,6 +1929,21 @@ msgstr ""
 
 msgid "Welcome"
 msgstr "Benvingut"
+
+#, fuzzy
+#~ msgid "This note has no history"
+#~ msgstr "Aquesta nota s'ha modificat:"
+
+#~ msgid ""
+#~ "The path to synchronise with when file system synchronisation is enabled. "
+#~ "See `sync.target`."
+#~ msgstr ""
+#~ "El camí on sincronitzar en activar la sincronització del sistema. Vegeu "
+#~ "«sync.target»."
+
+#, fuzzy
+#~ msgid "Joplin v%s"
+#~ msgstr "Lloc web del Joplin"
 
 #~ msgid "State: %s."
 #~ msgstr "Estat: %s"

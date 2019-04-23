@@ -54,11 +54,15 @@ class ElectronAppWrapper {
 			y: windowState.y,
 			width: windowState.width,
 			height: windowState.height,
+                        backgroundColor: '#fff', // required to enable sub pixel rendering, can't be in css
+			webPreferences: {
+				nodeIntegration: true,
+			},
 		};
 
 		// Linux icon workaround for bug https://github.com/electron-userland/electron-builder/issues/2098
 		// Fix: https://github.com/electron-userland/electron-builder/issues/2269
-		if (shim.isLinux()) windowOptions.icon = __dirname + '/build/icons/128x128.png';
+		if (shim.isLinux()) windowOptions.icon = path.join(__dirname, '..', 'build/icons/128x128.png');
 
 		require('electron-context-menu')({
 			shouldShowMenu: (event, params) => {
@@ -77,7 +81,7 @@ class ElectronAppWrapper {
 		}))
 
 		// Uncomment this to view errors if the application does not start
-		if (this.env_ === 'dev') this.win_.webContents.openDevTools();
+		// if (this.env_ === 'dev') this.win_.webContents.openDevTools();
 
 		this.win_.on('close', (event) => {
 			// If it's on macOS, the app is completely closed only if the user chooses to close the app (willQuitApp_ will be true)
@@ -191,19 +195,24 @@ class ElectronAppWrapper {
 	ensureSingleInstance() {
 		if (this.env_ === 'dev') return false;
 
-		return new Promise((resolve, reject) => {
-			const alreadyRunning = this.electronApp_.makeSingleInstance((commandLine, workingDirectory) => {
-				const win = this.window();
-				if (!win) return;
-				if (win.isMinimized()) win.restore();
-				win.show();
-				win.focus();
-			});
+		const gotTheLock = this.electronApp_.requestSingleInstanceLock();
 
-			if (alreadyRunning) this.electronApp_.quit();
+		if (!gotTheLock) {
+			// Another instance is already running - exit
+			this.electronApp_.quit();
+			return true;
+		}
 
-			resolve(alreadyRunning);
+		// Someone tried to open a second instance - focus our window instead
+		this.electronApp_.on('second-instance', (event, commandLine, workingDirectory) => {
+			const win = this.window();
+			if (!win) return;
+			if (win.isMinimized()) win.restore();
+			win.show();
+			win.focus();
 		});
+
+		return false;
 	}
 
 	async start() {
@@ -211,8 +220,8 @@ class ElectronAppWrapper {
 		// the "ready" event. So we use the function below to make sure that the app is ready.
 		await this.waitForElectronAppReady();
 
-		const alreadyRunning = await this.ensureSingleInstance();
-		if (alreadyRunning) return;
+		const alreadyRunning = this.ensureSingleInstance();
+		if (alreadyRunning) return;		
 
 		this.createWindow();
 

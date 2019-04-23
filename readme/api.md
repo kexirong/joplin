@@ -54,6 +54,10 @@ To get the IDs only of all the tags:
 
 	curl http://localhost:41184/tags?fields=id
 
+# Error handling
+
+In case of an error, an HTTP status code >= 400 will be returned along with a JSON object that provides more info about the error. The JSON object is in the format `{ "error": "description of error" }`.
+
 # About the property types
 
 * Text is UTF-8.
@@ -63,6 +67,10 @@ To get the IDs only of all the tags:
 # Testing if the service is available
 
 Call **GET /ping** to check if the service is available. It should return "JoplinClipperServer" if it works.
+
+# Searching
+
+Call **GET /search?query=YOUR_QUERY** to search for notes. This end-point supports the `field` parameter which is recommended to use so that you only get the data that you need. The query syntax is as described in the main documentation: https://joplinapp.org/#searching
 
 # Notes
 
@@ -97,7 +105,6 @@ body_html | text | Note body, in HTML format
 base_url | text | If `body_html` is provided and contains relative URLs, provide the `base_url` parameter too so that all the URLs can be converted to absolute ones. The base URL is basically where the HTML was fetched from, minus the query (everything after the '?'). For example if the original page was `https://stackoverflow.com/search?q=%5Bjava%5D+test`, the base URL is `https://stackoverflow.com/search`.
 image_data_url | text | An image to attach to the note, in [Data URL](https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/Data_URIs) format.
 crop_rect | text | If an image is provided, you can also specify an optional rectangle that will be used to crop the image. In format `{ x: x, y: y, width: width, height: height }`
-tags | text | Comma-separated list of tags. eg. `tag1,tag2`.
 
 ## GET /notes
 
